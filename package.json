@@ -15,6 +15,7 @@
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.0",
     "@vercel/blob": "^0.26.0",
+    "@ybouane/liquidglass": "^1.0.3",
     "iron-session": "^8.0.4",
     "next": "16.2.4",
     "react": "19.2.4",

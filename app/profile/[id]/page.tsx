@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { type Schedule } from '@/components/SchedulePicker';
+import LiquidGlassWrapper, { GlassPanel } from '@/components/LiquidGlassWrapper';
 
 interface Profile {
   id: string;
@@ -94,24 +95,44 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-light-gray pt-12">
       {/* Hero */}
-      <div className="relative h-52 bg-near-black">
+      <LiquidGlassWrapper
+        className="relative h-52 bg-near-black"
+        defaults={{
+          cornerRadius: 0,
+          refraction: 0.01,
+          blurAmount: 0.15,
+          specular: 0.05,
+          shadowOpacity: 0,
+          zRadius: 10,
+        }}
+      >
         {profile.photo_url ? (
-          <Image src={profile.photo_url} alt={name} fill className="object-cover" />
+          <Image src={profile.photo_url} alt={name} fill className="object-cover" crossOrigin="anonymous" />
         ) : (
           <div className="flex items-center justify-center h-full text-8xl">
             {type === 'dog' ? '🐶' : '🏃'}
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-      </div>
+
+        {/* Glass name badge overlapping bottom of hero */}
+        <GlassPanel
+          className="absolute bottom-4 left-5 right-5 px-5 py-3"
+          config={{
+            cornerRadius: 16,
+            blurAmount: 0.3,
+            refraction: 0.02,
+            specular: 0.15,
+            tintStrength: 0.05,
+          }}
+        >
+          <h1 className="text-2xl font-semibold text-white leading-tight tracking-tight">{name}</h1>
+          {type === 'dog' && <p className="text-white/60 text-sm tracking-[-0.014em]">{profile.breed} · owned by {profile.owner_name}</p>}
+          {type === 'runner' && <p className="text-white/60 text-sm tracking-[-0.014em]">Runs {profile.typical_distance}</p>}
+        </GlassPanel>
+      </LiquidGlassWrapper>
 
       <div className="px-5 py-5 max-w-sm mx-auto space-y-4">
-        <div>
-          <h1 className="text-[28px] font-semibold text-near-black leading-tight tracking-tight">{name}</h1>
-          {type === 'dog' && <p className="text-black/48 text-sm tracking-[-0.014em]">{profile.breed} · owned by {profile.owner_name}</p>}
-          {type === 'runner' && <p className="text-black/48 text-sm tracking-[-0.014em]">Runs {profile.typical_distance}</p>}
-        </div>
-
         {/* Details */}
         <div className="bg-white rounded-lg divide-y divide-black/[0.04]">
           <Row icon="🗺️" label="Route" value="Castle Island, South Boston" />
