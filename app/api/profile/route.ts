@@ -37,32 +37,32 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const sql = db();
+  const scheduleJson = JSON.stringify(body.schedule ?? {});
 
   if (session.role === 'owner') {
-    const { dogName, breed, pace, ownerName, ownerContact, photoUrl } = body;
+    const { dogName, breed, pace, ownerName, photoUrl } = body;
     await sql`
-      INSERT INTO dog_profiles (user_id, dog_name, breed, pace, owner_name, owner_contact, photo_url, route)
-      VALUES (${session.userId}, ${dogName}, ${breed}, ${pace}, ${ownerName}, ${ownerContact}, ${photoUrl ?? null}, 'castle-island')
+      INSERT INTO dog_profiles (user_id, dog_name, breed, pace, owner_name, owner_contact, photo_url, route, schedule)
+      VALUES (${session.userId}, ${dogName}, ${breed}, ${pace}, ${ownerName}, '', ${photoUrl ?? null}, 'castle-island', ${scheduleJson}::jsonb)
       ON CONFLICT (user_id) DO UPDATE SET
         dog_name = EXCLUDED.dog_name,
         breed = EXCLUDED.breed,
         pace = EXCLUDED.pace,
         owner_name = EXCLUDED.owner_name,
-        owner_contact = EXCLUDED.owner_contact,
-        photo_url = EXCLUDED.photo_url
+        photo_url = EXCLUDED.photo_url,
+        schedule = EXCLUDED.schedule
     `;
   } else {
-    const { runnerName, pace, typicalDistance, contact, availability, photoUrl } = body;
+    const { runnerName, pace, typicalDistance, photoUrl } = body;
     await sql`
-      INSERT INTO runner_profiles (user_id, runner_name, pace, typical_distance, contact, availability, photo_url, route)
-      VALUES (${session.userId}, ${runnerName}, ${pace}, ${typicalDistance}, ${contact}, ${availability}, ${photoUrl ?? null}, 'castle-island')
+      INSERT INTO runner_profiles (user_id, runner_name, pace, typical_distance, contact, availability, photo_url, route, schedule)
+      VALUES (${session.userId}, ${runnerName}, ${pace}, ${typicalDistance}, '', '', ${photoUrl ?? null}, 'castle-island', ${scheduleJson}::jsonb)
       ON CONFLICT (user_id) DO UPDATE SET
         runner_name = EXCLUDED.runner_name,
         pace = EXCLUDED.pace,
         typical_distance = EXCLUDED.typical_distance,
-        contact = EXCLUDED.contact,
-        availability = EXCLUDED.availability,
-        photo_url = EXCLUDED.photo_url
+        photo_url = EXCLUDED.photo_url,
+        schedule = EXCLUDED.schedule
     `;
   }
 

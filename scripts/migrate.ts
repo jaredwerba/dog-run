@@ -37,7 +37,8 @@ async function migrate() {
       owner_name TEXT NOT NULL,
       owner_contact TEXT NOT NULL,
       photo_url TEXT,
-      route TEXT NOT NULL DEFAULT 'castle-island'
+      route TEXT NOT NULL DEFAULT 'castle-island',
+      schedule JSONB DEFAULT '{}'
     )
   `;
 
@@ -48,11 +49,40 @@ async function migrate() {
       pace TEXT NOT NULL,
       typical_distance TEXT NOT NULL,
       contact TEXT NOT NULL,
-      availability TEXT NOT NULL,
+      availability TEXT NOT NULL DEFAULT '',
       photo_url TEXT,
-      route TEXT NOT NULL DEFAULT 'castle-island'
+      route TEXT NOT NULL DEFAULT 'castle-island',
+      schedule JSONB DEFAULT '{}'
     )
   `;
+
+  // Add schedule column to existing tables if missing
+  await sql`ALTER TABLE dog_profiles ADD COLUMN IF NOT EXISTS schedule JSONB DEFAULT '{}'`;
+  await sql`ALTER TABLE runner_profiles ADD COLUMN IF NOT EXISTS schedule JSONB DEFAULT '{}'`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      runner_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(owner_id, runner_id)
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+      sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      read_at TIMESTAMPTZ
+    )
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS messages_conversation_id_idx ON messages(conversation_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS messages_sender_id_idx ON messages(sender_id)`;
 
   console.log('Migrations complete.');
 }

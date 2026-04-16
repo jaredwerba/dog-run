@@ -13,12 +13,20 @@ export default function Home() {
         <p className="text-gray-500 text-base max-w-xs mx-auto mb-8">
           Match Boston dog owners with local runners around Castle Island and beyond.
         </p>
-        <Link
-          href="/register"
-          className="inline-block bg-orange-500 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-lg hover:bg-orange-600 active:scale-95 transition-all"
-        >
-          Get started — it&apos;s free
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            href="/register"
+            className="inline-block bg-orange-500 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-lg hover:bg-orange-600 active:scale-95 transition-all"
+          >
+            Create account
+          </Link>
+          <Link
+            href="/login"
+            className="inline-block bg-white text-orange-500 font-bold text-lg px-8 py-4 rounded-2xl shadow-sm border-2 border-orange-200 hover:border-orange-400 active:scale-95 transition-all"
+          >
+            Sign in
+          </Link>
+        </div>
       </div>
 
       {/* How it works */}
@@ -49,13 +57,6 @@ export default function Home() {
         <p className="text-xs text-gray-400 text-center mt-3">More routes coming soon</p>
       </div>
 
-      {/* Footer CTA */}
-      <div className="px-6 pb-16 text-center">
-        <p className="text-gray-500 text-sm mb-4">Already have an account?</p>
-        <Link href="/register" className="text-orange-500 font-semibold text-sm">
-          Sign in with passkey →
-        </Link>
-      </div>
     </main>
   );
 }
