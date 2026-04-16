@@ -1,9 +1,11 @@
 export const RP_NAME = 'Dog Run';
-export const RP_ID =
-  process.env.NODE_ENV === 'production'
-    ? (process.env.RP_ID ?? 'dog-run-woad.vercel.app')
-    : 'localhost';
-export const ORIGIN =
-  process.env.NODE_ENV === 'production'
-    ? `https://${RP_ID}`
-    : 'http://localhost:3000';
+
+export function getRpId(host: string): string {
+  // Strip port if present
+  return host.split(':')[0];
+}
+
+export function getOrigin(host: string): string {
+  const isDev = host.startsWith('localhost') || host.startsWith('127.');
+  return isDev ? `http://${host}` : `https://${host}`;
+}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { RP_ID, ORIGIN } from '@/lib/webauthn';
+import { getRpId, getOrigin } from '@/lib/webauthn';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -13,13 +13,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No pending registration' }, { status: 400 });
   }
 
+  const host = req.headers.get('host') ?? 'localhost:3000';
+
   let verification;
   try {
     verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge: challenge,
-      expectedOrigin: ORIGIN,
-      expectedRPID: RP_ID,
+      expectedOrigin: getOrigin(host),
+      expectedRPID: getRpId(host),
     });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 400 });

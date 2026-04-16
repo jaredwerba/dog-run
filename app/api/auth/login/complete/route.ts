@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { RP_ID, ORIGIN } from '@/lib/webauthn';
+import { getRpId, getOrigin } from '@/lib/webauthn';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -31,13 +31,15 @@ export async function POST(req: NextRequest) {
   const public_key = users[0].public_key as Buffer;
   const counter = users[0].counter as number;
 
+  const host = req.headers.get('host') ?? 'localhost:3000';
+
   let verification;
   try {
     verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge: challenge,
-      expectedOrigin: ORIGIN,
-      expectedRPID: RP_ID,
+      expectedOrigin: getOrigin(host),
+      expectedRPID: getRpId(host),
       credential: {
         id: cred_id,
         publicKey: new Uint8Array(public_key),

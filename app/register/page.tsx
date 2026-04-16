@@ -8,7 +8,7 @@ import {
   browserSupportsWebAuthn,
 } from '@simplewebauthn/browser';
 
-type Step = 'role' | 'username' | 'passkey';
+type Step = 'role' | 'email' | 'passkey';
 type Mode = 'register' | 'login';
 
 export default function RegisterPage() {
@@ -116,7 +116,7 @@ export default function RegisterPage() {
               <div className="space-y-4">
                 <h1 className="text-2xl font-bold text-gray-900 text-center">I am a…</h1>
                 <button
-                  onClick={() => { setRole('owner'); setStep('username'); }}
+                  onClick={() => { setRole('owner'); setStep('email'); }}
                   className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-left hover:border-orange-400 transition-colors"
                 >
                   <div className="text-3xl mb-1">🐶</div>
@@ -124,7 +124,7 @@ export default function RegisterPage() {
                   <div className="text-sm text-gray-500">Find a runner to join my dog's run</div>
                 </button>
                 <button
-                  onClick={() => { setRole('runner'); setStep('username'); }}
+                  onClick={() => { setRole('runner'); setStep('email'); }}
                   className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-left hover:border-orange-400 transition-colors"
                 >
                   <div className="text-3xl mb-1">🏃</div>
@@ -134,22 +134,23 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {step === 'username' && (
+            {step === 'email' && (
               <div className="space-y-4">
                 <button onClick={() => setStep('role')} className="text-sm text-gray-500">← Back</button>
-                <h1 className="text-2xl font-bold text-gray-900">Pick a username</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Your email address</h1>
                 <input
-                  type="text"
-                  placeholder="e.g. sarah_boston"
+                  type="email"
+                  placeholder="you@example.com"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, '_'))}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().trim())}
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-orange-400"
                   autoFocus
+                  autoComplete="email"
                 />
                 {error && <p className="text-red-500 text-sm">{error}</p>}
                 <button
-                  onClick={() => { if (username.length >= 3) setStep('passkey'); }}
-                  disabled={username.length < 3}
+                  onClick={() => { if (username.includes('@')) setStep('passkey'); }}
+                  disabled={!username.includes('@')}
                   className="w-full bg-orange-500 text-white font-semibold py-3 rounded-xl disabled:opacity-40"
                 >
                   Continue
@@ -159,7 +160,7 @@ export default function RegisterPage() {
 
             {step === 'passkey' && (
               <div className="space-y-4">
-                <button onClick={() => setStep('username')} className="text-sm text-gray-500">← Back</button>
+                <button onClick={() => setStep('email')} className="text-sm text-gray-500">← Back</button>
                 <h1 className="text-2xl font-bold text-gray-900">Set up your passkey</h1>
                 <p className="text-gray-500 text-sm">
                   A passkey uses Face ID, Touch ID, or your device PIN — no password needed.
@@ -184,17 +185,18 @@ export default function RegisterPage() {
           <div className="space-y-4">
             <h1 className="text-2xl font-bold text-gray-900 text-center">Welcome back</h1>
             <input
-              type="text"
-              placeholder="Username"
+              type="email"
+              placeholder="you@example.com"
               value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, '_'))}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().trim())}
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-orange-400"
               autoFocus
+              autoComplete="email"
             />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               onClick={handleLogin}
-              disabled={loading || username.length < 3}
+              disabled={loading || !username.includes('@')}
               className="w-full bg-orange-500 text-white font-semibold py-3 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {loading ? <span className="animate-spin">⏳</span> : <>🔑 Sign in with passkey</>}

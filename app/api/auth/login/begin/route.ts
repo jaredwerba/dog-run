@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { RP_ID } from '@/lib/webauthn';
+import { getRpId } from '@/lib/webauthn';
 
 export async function POST(req: NextRequest) {
   const { username } = await req.json();
@@ -24,8 +24,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No credentials registered' }, { status: 404 });
   }
 
+  const host = req.headers.get('host') ?? 'localhost:3000';
+
   const options = await generateAuthenticationOptions({
-    rpID: RP_ID,
+    rpID: getRpId(host),
     userVerification: 'preferred',
     allowCredentials: creds.map((c) => ({ id: c.id as string })),
   });
