@@ -3,30 +3,48 @@ import Link from 'next/link';
 export default function Home() {
   return (
     <main className="min-h-screen">
-      {/* Hero — dark cinematic section */}
-      <div className="bg-black px-6 pt-32 pb-20 text-center">
-        <p className="text-[17px] font-medium text-white/60 tracking-[-0.024em] mb-3">
-          Boston&apos;s dog-runner matching app
-        </p>
-        <h1 className="text-[48px] sm:text-[56px] font-semibold text-white leading-[1.07] tracking-[-0.005em] mb-4">
-          Find your<br />perfect run buddy.
-        </h1>
-        <p className="text-[17px] leading-[1.47] tracking-[-0.024em] text-white/60 max-w-xs mx-auto mb-8">
-          Match dog owners with local runners around Castle Island and beyond.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/register"
-            className="inline-block bg-apple-blue hover:bg-apple-blue-hover text-white font-medium text-[17px] px-7 py-2 rounded-lg transition-colors"
-          >
-            Create account
-          </Link>
-          <Link
-            href="/login"
-            className="inline-block text-bright-blue font-medium text-[17px] px-7 py-2 rounded-[980px] border border-white/30 hover:border-white/50 transition-colors"
-          >
-            Sign in
-          </Link>
+      {/* Hero — full-screen video background */}
+      <div className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
+        {/* Video background */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster="/hero-poster.jpg"
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-black/50" />
+
+        {/* Content */}
+        <div className="relative z-10 text-center px-6 max-w-lg">
+          <p className="text-[15px] font-medium text-white/60 tracking-[-0.024em] mb-3 uppercase tracking-widest">
+            Boston&apos;s dog-runner matching app
+          </p>
+          <h1 className="text-[44px] sm:text-[56px] font-semibold text-white leading-[1.07] tracking-[-0.005em] mb-4">
+            Find your<br />perfect run buddy.
+          </h1>
+          <p className="text-[17px] leading-[1.47] tracking-[-0.024em] text-white/70 max-w-xs mx-auto mb-8">
+            Match dog owners with local runners around Castle Island and beyond.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/register"
+              className="inline-block bg-apple-blue hover:bg-apple-blue-hover text-white font-medium text-[17px] px-7 py-2.5 rounded-lg transition-colors"
+            >
+              Create account
+            </Link>
+            <Link
+              href="/login"
+              className="inline-block text-white font-medium text-[17px] px-7 py-2.5 rounded-[980px] border border-white/30 hover:border-white/60 hover:bg-white/10 transition-all"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
       </div>
 
