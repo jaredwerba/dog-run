@@ -2,61 +2,65 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-orange-50">
-      {/* Hero */}
-      <div className="px-6 pt-28 pb-16 text-center">
-        <div className="text-7xl mb-6">🐾</div>
-        <h1 className="text-4xl font-extrabold text-gray-900 leading-tight mb-3">
-          Find your<br />
-          <span className="text-orange-500">perfect run buddy</span>
+    <main className="min-h-screen">
+      {/* Hero — dark cinematic section */}
+      <div className="bg-black px-6 pt-32 pb-20 text-center">
+        <p className="text-[17px] font-medium text-white/60 tracking-[-0.024em] mb-3">
+          Boston&apos;s dog-runner matching app
+        </p>
+        <h1 className="text-[48px] sm:text-[56px] font-semibold text-white leading-[1.07] tracking-[-0.005em] mb-4">
+          Find your<br />perfect run buddy.
         </h1>
-        <p className="text-gray-500 text-base max-w-xs mx-auto mb-8">
-          Match Boston dog owners with local runners around Castle Island and beyond.
+        <p className="text-[17px] leading-[1.47] tracking-[-0.024em] text-white/60 max-w-xs mx-auto mb-8">
+          Match dog owners with local runners around Castle Island and beyond.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/register"
-            className="inline-block bg-orange-500 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-lg hover:bg-orange-600 active:scale-95 transition-all"
+            className="inline-block bg-apple-blue hover:bg-apple-blue-hover text-white font-medium text-[17px] px-7 py-2 rounded-lg transition-colors"
           >
             Create account
           </Link>
           <Link
             href="/login"
-            className="inline-block bg-white text-orange-500 font-bold text-lg px-8 py-4 rounded-2xl shadow-sm border-2 border-orange-200 hover:border-orange-400 active:scale-95 transition-all"
+            className="inline-block text-bright-blue font-medium text-[17px] px-7 py-2 rounded-[980px] border border-white/30 hover:border-white/50 transition-colors"
           >
             Sign in
           </Link>
         </div>
       </div>
 
-      {/* How it works */}
-      <div className="px-6 pb-16 max-w-sm mx-auto">
-        <h2 className="text-lg font-bold text-gray-900 mb-5 text-center">How it works</h2>
-        <div className="space-y-4">
+      {/* How it works — light section */}
+      <div className="bg-light-gray px-6 py-16 max-w-sm mx-auto">
+        <h2 className="text-2xl font-semibold text-near-black tracking-tight text-center mb-8">
+          How it works
+        </h2>
+        <div className="space-y-5">
           <Step icon="🔑" title="Create an account" desc="Sign up with a passkey — no password needed. Just Face ID or Touch ID." />
           <Step icon="🗺️" title="Pick your route" desc="Choose from pre-defined Boston running routes like Castle Island." />
-          <Step icon="🤝" title="Find your match" desc="Dog owners see runners. Runners see dogs. Browse by pace and contact directly." />
+          <Step icon="🤝" title="Find your match" desc="Dog owners see runners. Runners see dogs. Browse by pace and message directly." />
         </div>
       </div>
 
-      {/* Routes preview */}
-      <div className="px-6 pb-16 max-w-sm mx-auto">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 text-center">Routes</h2>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-4 p-4">
+      {/* Routes — continues light section */}
+      <div className="bg-light-gray px-6 pb-20 max-w-sm mx-auto">
+        <h2 className="text-2xl font-semibold text-near-black tracking-tight text-center mb-5">
+          Routes
+        </h2>
+        <div className="bg-white rounded-lg apple-shadow overflow-hidden">
+          <div className="flex items-center gap-4 p-5">
             <div className="text-3xl">🏝️</div>
             <div>
-              <p className="font-bold text-gray-900">Castle Island</p>
-              <p className="text-sm text-gray-500">South Boston · ~2.5 mile loop · Waterfront</p>
+              <p className="font-semibold text-near-black text-[17px] tracking-[-0.024em]">Castle Island</p>
+              <p className="text-sm text-black/48 tracking-[-0.014em]">South Boston · ~2.5 mile loop · Waterfront</p>
             </div>
-            <span className="ml-auto text-xs bg-green-100 text-green-700 font-semibold px-2 py-1 rounded-full">
+            <span className="ml-auto text-xs bg-apple-blue text-white font-medium px-2.5 py-1 rounded-full">
               Active
             </span>
           </div>
         </div>
-        <p className="text-xs text-gray-400 text-center mt-3">More routes coming soon</p>
+        <p className="text-xs text-black/48 text-center mt-4 tracking-[-0.008em]">More routes coming soon</p>
       </div>
-
     </main>
   );
 }
@@ -64,12 +68,12 @@ export default function Home() {
 function Step({ icon, title, desc }: { icon: string; title: string; desc: string }) {
   return (
     <div className="flex gap-4 items-start">
-      <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-xl shrink-0">
+      <div className="w-10 h-10 rounded-lg bg-dark-surface flex items-center justify-center text-xl shrink-0">
         {icon}
       </div>
       <div>
-        <p className="font-semibold text-gray-900 text-sm">{title}</p>
-        <p className="text-gray-500 text-sm">{desc}</p>
+        <p className="font-semibold text-near-black text-sm tracking-[-0.014em]">{title}</p>
+        <p className="text-sm text-black/60 tracking-[-0.014em]">{desc}</p>
       </div>
     </div>
   );

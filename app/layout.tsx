@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
 
-const geist = Geist({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "DogRun — Find your run buddy in Boston",
@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className={`${geist.className} min-h-full flex flex-col`}>
+    <html lang="en" className={`h-full ${inter.variable}`}>
+      <body className="min-h-full flex flex-col antialiased">
         <NavBar />
         {children}
       </body>

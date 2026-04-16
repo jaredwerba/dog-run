@@ -59,16 +59,16 @@ export default function BrowsePage() {
     : profiles.filter((p) => p.pace === filter);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20 pb-10">
+    <div className="min-h-screen bg-light-gray pt-16 pb-10">
       {/* Header */}
       <div className="px-4 mb-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-2xl">{viewing === 'dogs' ? '🐶' : '🏃'}</span>
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-xl font-semibold text-near-black tracking-tight">
             {viewing === 'dogs' ? 'Dogs at Castle Island' : 'Runners at Castle Island'}
           </h1>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-black/48 tracking-[-0.014em]">
           {viewing === 'dogs'
             ? 'Dog owners looking for a running buddy'
             : 'Runners who love running with dogs'}
@@ -81,10 +81,10 @@ export default function BrowsePage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               filter === f
-                ? 'bg-orange-500 text-white border-orange-500'
-                : 'bg-white text-gray-600 border-gray-200'
+                ? 'bg-apple-blue text-white'
+                : 'bg-[#fafafc] text-black/60 border border-black/[0.04]'
             }`}
           >
             {f === 'all' ? 'All paces' : PACE_LABELS[f]}
@@ -93,9 +93,9 @@ export default function BrowsePage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400 text-sm">Loading…</div>
+        <div className="flex items-center justify-center py-20 text-black/48 text-sm tracking-[-0.014em]">Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-sm gap-2">
+        <div className="flex flex-col items-center justify-center py-20 text-black/48 text-sm gap-2">
           <span className="text-4xl">🔍</span>
           <p>No {viewing === 'dogs' ? 'dogs' : 'runners'} found</p>
         </div>

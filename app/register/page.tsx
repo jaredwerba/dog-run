@@ -17,9 +17,9 @@ export default function RegisterPage() {
 
   if (!browserSupportsWebAuthn()) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-gray-600 text-center">
-          Your browser doesn't support passkeys. Try Chrome, Safari, or Edge on a modern device.
+      <div className="min-h-screen flex items-center justify-center p-6 bg-light-gray">
+        <p className="text-black/60 text-center text-[17px] tracking-[-0.024em]">
+          Your browser doesn&apos;t support passkeys. Try Chrome, Safari, or Edge on a modern device.
         </p>
       </div>
     );
@@ -57,57 +57,58 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center px-6 pt-20 pb-10">
+    <div className="min-h-screen bg-light-gray flex flex-col items-center justify-center px-6 pt-20 pb-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🐾</div>
-          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
+          <h1 className="text-[28px] font-semibold text-near-black leading-tight tracking-tight">
+            Create your account
+          </h1>
         </div>
 
         {step === 'role' && (
-          <div className="space-y-4">
-            <p className="text-gray-600 text-sm text-center">I am a…</p>
+          <div className="space-y-3">
+            <p className="text-black/48 text-sm text-center tracking-[-0.014em] mb-4">I am a…</p>
             <button
               onClick={() => { setRole('owner'); setStep('email'); }}
-              className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-left hover:border-orange-400 transition-colors"
+              className="w-full bg-white rounded-lg apple-shadow p-5 text-left hover:ring-2 hover:ring-apple-blue transition-all"
             >
               <div className="text-3xl mb-1">🐶</div>
-              <div className="font-bold text-gray-900">Dog Owner</div>
-              <div className="text-sm text-gray-500">Find a runner to join my dog&apos;s run</div>
+              <div className="font-semibold text-near-black text-[17px] tracking-[-0.024em]">Dog Owner</div>
+              <div className="text-sm text-black/48 tracking-[-0.014em]">Find a runner to join my dog&apos;s run</div>
             </button>
             <button
               onClick={() => { setRole('runner'); setStep('email'); }}
-              className="w-full bg-white border-2 border-gray-200 rounded-2xl p-5 text-left hover:border-orange-400 transition-colors"
+              className="w-full bg-white rounded-lg apple-shadow p-5 text-left hover:ring-2 hover:ring-apple-blue transition-all"
             >
               <div className="text-3xl mb-1">🏃</div>
-              <div className="font-bold text-gray-900">Runner</div>
-              <div className="text-sm text-gray-500">Find a dog to run with around Boston</div>
+              <div className="font-semibold text-near-black text-[17px] tracking-[-0.024em]">Runner</div>
+              <div className="text-sm text-black/48 tracking-[-0.014em]">Find a dog to run with around Boston</div>
             </button>
-            <p className="text-center text-sm text-gray-500 pt-2">
+            <p className="text-center text-sm text-black/48 pt-3 tracking-[-0.014em]">
               Already have an account?{' '}
-              <Link href="/login" className="text-orange-500 font-semibold">Sign in</Link>
+              <Link href="/login" className="text-link-blue hover:underline font-medium">Sign in</Link>
             </p>
           </div>
         )}
 
         {step === 'email' && (
           <div className="space-y-4">
-            <button onClick={() => setStep('role')} className="text-sm text-gray-500">← Back</button>
-            <h2 className="text-xl font-bold text-gray-900">Your email address</h2>
+            <button onClick={() => setStep('role')} className="text-sm text-link-blue hover:underline">← Back</button>
+            <h2 className="text-xl font-semibold text-near-black tracking-tight">Your email address</h2>
             <input
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full border border-black/10 rounded-lg px-4 py-3 text-[17px] tracking-[-0.024em] focus:outline-none focus:ring-2 focus:ring-apple-blue bg-white text-near-black placeholder:text-black/30"
               autoFocus
               autoComplete="email"
             />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-500 text-sm tracking-[-0.014em]">{error}</p>}
             <button
               onClick={() => { if (email.includes('@')) setStep('passkey'); }}
               disabled={!email.includes('@')}
-              className="w-full bg-orange-500 text-white font-semibold py-3 rounded-xl disabled:opacity-40"
+              className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-40 text-[17px] transition-colors"
             >
               Continue
             </button>
@@ -116,18 +117,18 @@ export default function RegisterPage() {
 
         {step === 'passkey' && (
           <div className="space-y-4">
-            <button onClick={() => setStep('email')} className="text-sm text-gray-500">← Back</button>
-            <h2 className="text-xl font-bold text-gray-900">Set up your passkey</h2>
-            <p className="text-gray-500 text-sm">
+            <button onClick={() => setStep('email')} className="text-sm text-link-blue hover:underline">← Back</button>
+            <h2 className="text-xl font-semibold text-near-black tracking-tight">Set up your passkey</h2>
+            <p className="text-black/48 text-sm tracking-[-0.014em]">
               A passkey uses Face ID, Touch ID, or your device PIN — no password needed.
             </p>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-500 text-sm tracking-[-0.014em]">{error}</p>}
             <button
               onClick={handleRegister}
               disabled={loading}
-              className="w-full bg-orange-500 text-white font-semibold py-3 rounded-xl disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2 text-[17px] transition-colors"
             >
-              {loading ? <span className="animate-spin">⏳</span> : <>🔑 Create passkey</>}
+              {loading ? <span className="animate-spin">⏳</span> : 'Create passkey'}
             </button>
           </div>
         )}

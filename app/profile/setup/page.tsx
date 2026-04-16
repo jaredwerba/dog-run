@@ -24,13 +24,11 @@ export default function ProfileSetupPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [schedule, setSchedule] = useState<Schedule>({});
 
-  // Dog owner fields
   const [dogName, setDogName] = useState('');
   const [breed, setBreed] = useState('');
   const [pace, setPace] = useState('');
   const [ownerName, setOwnerName] = useState('');
 
-  // Runner fields
   const [runnerName, setRunnerName] = useState('');
   const [runnerPace, setRunnerPace] = useState('');
   const [typicalDistance, setTypicalDistance] = useState('');
@@ -41,7 +39,6 @@ export default function ProfileSetupPage() {
       .then(async (d) => {
         if (!d.user) { router.push('/login'); return; }
         setRole(d.user.role);
-        // Pre-fill existing profile
         const pr = await fetch('/api/profile').then((r) => r.json());
         const p = pr.profile;
         if (!p) return;
@@ -101,16 +98,16 @@ export default function ProfileSetupPage() {
   if (!role) return null;
 
   return (
-    <div className="min-h-screen bg-orange-50 pt-20 px-6 pb-12">
+    <div className="min-h-screen bg-light-gray pt-16 px-6 pb-12">
       <div className="max-w-sm mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-[28px] font-semibold text-near-black leading-tight tracking-tight">
           {role === 'owner' ? 'Your dog\'s profile' : 'Your runner profile'}
         </h1>
 
         {/* Photo */}
         <div className="flex flex-col items-center gap-3">
           <div
-            className="w-24 h-24 rounded-full bg-orange-100 overflow-hidden cursor-pointer border-2 border-dashed border-orange-300 flex items-center justify-center"
+            className="w-24 h-24 rounded-full bg-neutral-placeholder overflow-hidden cursor-pointer border-2 border-dashed border-black/10 flex items-center justify-center"
             onClick={() => fileRef.current?.click()}
           >
             {photoUrl ? (
@@ -119,7 +116,7 @@ export default function ProfileSetupPage() {
               <span className="text-3xl">{role === 'owner' ? '🐶' : '🏃'}</span>
             )}
           </div>
-          <button onClick={() => fileRef.current?.click()} className="text-sm text-orange-500 font-medium" disabled={uploading}>
+          <button onClick={() => fileRef.current?.click()} className="text-sm text-link-blue font-medium hover:underline" disabled={uploading}>
             {uploading ? 'Uploading…' : photoUrl ? 'Change photo' : 'Add photo'}
           </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
@@ -157,8 +154,8 @@ export default function ProfileSetupPage() {
                   <button
                     key={d}
                     onClick={() => setTypicalDistance(d)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                      typicalDistance === d ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-700 border-gray-200'
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      typicalDistance === d ? 'bg-apple-blue text-white' : 'bg-white text-near-black border border-black/10'
                     }`}
                   >
                     {d}
@@ -169,19 +166,18 @@ export default function ProfileSetupPage() {
           </>
         )}
 
-        {/* Weekly Schedule — both roles */}
         <Field label="Your weekly availability">
           <SchedulePicker value={schedule} onChange={setSchedule} />
         </Field>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && <p className="text-red-500 text-sm tracking-[-0.014em]">{error}</p>}
 
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full bg-orange-500 text-white font-semibold py-3 rounded-xl disabled:opacity-50"
+          className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-50 text-[17px] transition-colors"
         >
-          {saving ? 'Saving…' : 'Save profile →'}
+          {saving ? 'Saving…' : 'Save profile'}
         </button>
       </div>
     </div>
@@ -191,7 +187,7 @@ export default function ProfileSetupPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-gray-700">{label}</label>
+      <label className="block text-sm font-semibold text-near-black tracking-[-0.014em]">{label}</label>
       {children}
     </div>
   );
@@ -199,9 +195,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function PacePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const options = [
-    { key: 'casual', label: '🚶 Casual', desc: '10+ min/mi' },
-    { key: 'moderate', label: '🏃 Moderate', desc: '8–10 min/mi' },
-    { key: 'fast', label: '⚡ Fast', desc: '<8 min/mi' },
+    { key: 'casual', label: 'Casual', desc: '10+ min/mi' },
+    { key: 'moderate', label: 'Moderate', desc: '8–10 min/mi' },
+    { key: 'fast', label: 'Fast', desc: '<8 min/mi' },
   ];
   return (
     <div className="flex gap-2">
@@ -209,16 +205,16 @@ function PacePicker({ value, onChange }: { value: string; onChange: (v: string) 
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`flex-1 py-2 px-1 rounded-xl border text-xs font-semibold text-center transition-colors ${
-            value === o.key ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-700 border-gray-200'
+          className={`flex-1 py-2 px-1 rounded-lg border text-xs font-semibold text-center transition-colors ${
+            value === o.key ? 'bg-apple-blue text-white border-apple-blue' : 'bg-white text-near-black border-black/10'
           }`}
         >
           <div>{o.label}</div>
-          <div className="font-normal opacity-75">{o.desc}</div>
+          <div className={`font-normal ${value === o.key ? 'text-white/70' : 'text-black/48'}`}>{o.desc}</div>
         </button>
       ))}
     </div>
   );
 }
 
-const inputCls = 'w-full border border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-orange-400';
+const inputCls = 'w-full border border-black/10 rounded-lg px-4 py-3 text-[17px] tracking-[-0.024em] bg-white text-near-black focus:outline-none focus:ring-2 focus:ring-apple-blue placeholder:text-black/30';

@@ -48,18 +48,18 @@ export default function SchedulePicker({ value, onChange }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-black/48 tracking-[-0.008em]">
         Tap your available time slots · {totalSelected} selected
       </p>
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-black/[0.04] overflow-hidden">
         {DAYS.map((day, di) => {
           const selected = value[day.key] ?? [];
           return (
             <div
               key={day.key}
-              className={`flex items-center gap-2 px-3 py-2 ${di < DAYS.length - 1 ? 'border-b border-gray-100' : ''}`}
+              className={`flex items-center gap-2 px-3 py-2 ${di < DAYS.length - 1 ? 'border-b border-black/[0.04]' : ''}`}
             >
-              <span className="w-8 text-xs font-bold text-gray-500 shrink-0">{day.label}</span>
+              <span className="w-8 text-xs font-semibold text-black/48 shrink-0">{day.label}</span>
               <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-1 scrollbar-none">
                 {SLOTS.map((slot) => {
                   const active = selected.includes(slot.key);
@@ -68,10 +68,10 @@ export default function SchedulePicker({ value, onChange }: Props) {
                       key={slot.key}
                       type="button"
                       onClick={() => toggle(day.key, slot.key)}
-                      className={`shrink-0 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                      className={`shrink-0 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
                         active
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          ? 'bg-apple-blue text-white'
+                          : 'bg-light-gray text-black/48 hover:bg-neutral-placeholder'
                       }`}
                     >
                       {slot.label}
@@ -87,7 +87,6 @@ export default function SchedulePicker({ value, onChange }: Props) {
   );
 }
 
-// Utility: format a schedule into a human-readable summary
 export function scheduleToText(schedule: Schedule): string {
   const parts: string[] = [];
   for (const day of DAYS) {

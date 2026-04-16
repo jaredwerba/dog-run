@@ -13,9 +13,9 @@ export default function LoginPage() {
 
   if (!browserSupportsWebAuthn()) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-gray-600 text-center">
-          Your browser doesn't support passkeys. Try Chrome, Safari, or Edge on a modern device.
+      <div className="min-h-screen flex items-center justify-center p-6 bg-light-gray">
+        <p className="text-black/60 text-center text-[17px] tracking-[-0.024em]">
+          Your browser doesn&apos;t support passkeys. Try Chrome, Safari, or Edge on a modern device.
         </p>
       </div>
     );
@@ -53,38 +53,39 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center px-6 pt-20 pb-10">
+    <div className="min-h-screen bg-light-gray flex flex-col items-center justify-center px-6 pt-20 pb-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <div className="text-5xl mb-3">🐾</div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in with your passkey</p>
+          <h1 className="text-[28px] font-semibold text-near-black leading-tight tracking-tight">
+            Welcome back
+          </h1>
+          <p className="text-sm text-black/48 mt-1 tracking-[-0.014em]">Sign in with your passkey</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="bg-white rounded-lg apple-shadow p-6 space-y-4">
           <input
             type="email"
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-orange-400"
+            className="w-full border border-black/10 rounded-lg px-4 py-3 text-[17px] tracking-[-0.024em] focus:outline-none focus:ring-2 focus:ring-apple-blue bg-white text-near-black placeholder:text-black/30"
             autoFocus
             autoComplete="email"
             onKeyDown={(e) => e.key === 'Enter' && email.includes('@') && handleLogin()}
           />
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm tracking-[-0.014em]">{error}</p>}
           <button
             onClick={handleLogin}
             disabled={loading || !email.includes('@')}
-            className="w-full bg-orange-500 text-white font-semibold py-3 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-40 flex items-center justify-center gap-2 text-[17px] transition-colors"
           >
-            {loading ? <span className="animate-spin">⏳</span> : <>🔑 Sign in with passkey</>}
+            {loading ? <span className="animate-spin">⏳</span> : 'Sign in with passkey'}
           </button>
         </div>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-black/48 tracking-[-0.014em]">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-orange-500 font-semibold">
+          <Link href="/register" className="text-link-blue hover:underline font-medium">
             Create one
           </Link>
         </p>
