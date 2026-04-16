@@ -6,21 +6,21 @@ import LiquidGlassWrapper, { GlassPanel } from '@/components/LiquidGlassWrapper'
 export default function Home() {
   return (
     <main className="min-h-screen">
-      {/* Hero — full-screen video with liquid glass overlay */}
+      {/* Hero — full-screen video, glass only on buttons */}
       <LiquidGlassWrapper
         className="relative min-h-[100svh] flex items-center justify-center overflow-hidden"
         defaults={{
-          cornerRadius: 32,
-          refraction: 0.02,
-          blurAmount: 0.25,
-          chromAberration: 0.01,
-          edgeHighlight: 0.04,
-          specular: 0.15,
-          fresnel: 0.7,
-          shadowOpacity: 0.2,
-          shadowSpread: 12,
-          tintStrength: 0.03,
-          zRadius: 24,
+          cornerRadius: 980,
+          refraction: 0.025,
+          blurAmount: 0.3,
+          chromAberration: 0.015,
+          edgeHighlight: 0.06,
+          specular: 0.25,
+          fresnel: 0.85,
+          shadowOpacity: 0.3,
+          shadowSpread: 14,
+          tintStrength: 0.04,
+          zRadius: 18,
         }}
       >
         {/* Video background — captured by LiquidGlass */}
@@ -35,47 +35,49 @@ export default function Home() {
           src="/hero.mp4"
         />
 
-        {/* Dark overlay */}
+        {/* Dark overlay for text contrast */}
         <div className="absolute inset-0 bg-black/40" />
 
-        {/* Glass CTA panel */}
-        <GlassPanel
-          className="relative z-10 text-center px-8 py-10 mx-6 max-w-lg"
-          config={{
-            cornerRadius: 32,
-            blurAmount: 0.3,
-            refraction: 0.02,
-            specular: 0.2,
-            fresnel: 0.8,
-            tintStrength: 0.05,
-            brightness: 0.05,
-            shadowOpacity: 0.25,
-            shadowSpread: 16,
-          }}
-        >
-          <p className="text-[13px] font-medium text-white/60 uppercase tracking-widest mb-3">
+        {/* Plain text content (no glass wrapper) */}
+        <div className="relative z-10 text-center px-6 max-w-lg">
+          <p className="text-[13px] font-medium text-white/70 uppercase tracking-widest mb-3">
             Boston&apos;s dog-runner matching app
           </p>
-          <h1 className="text-[40px] sm:text-[52px] font-semibold text-white leading-[1.07] tracking-[-0.005em] mb-4">
+          <h1 className="text-[44px] sm:text-[56px] font-semibold text-white leading-[1.07] tracking-[-0.005em] mb-4 drop-shadow-lg">
             Find your<br />perfect run buddy.
           </h1>
-          <p className="text-[17px] leading-[1.47] tracking-[-0.024em] text-white/70 max-w-xs mx-auto mb-8">
+          <p className="text-[17px] leading-[1.47] tracking-[-0.024em] text-white/80 max-w-xs mx-auto mb-10 drop-shadow">
             Match dog owners with local runners around Castle Island and beyond.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/register"
-              className="inline-block bg-apple-blue hover:bg-apple-blue-hover text-white font-medium text-[17px] px-7 py-2.5 rounded-lg transition-colors"
-            >
-              Create account
-            </Link>
-            <Link
-              href="/login"
-              className="inline-block text-white font-medium text-[17px] px-7 py-2.5 rounded-[980px] border border-white/30 hover:border-white/60 hover:bg-white/10 transition-all"
-            >
-              Sign in
-            </Link>
-          </div>
+        </div>
+
+        {/* Glass button group — direct child of LiquidGlass root */}
+        <GlassPanel
+          className="absolute z-20 left-1/2 -translate-x-1/2 bottom-[18%] sm:bottom-auto sm:top-[calc(50%+90px)] flex gap-2 p-2"
+          config={{
+            cornerRadius: 980,
+            blurAmount: 0.35,
+            refraction: 0.025,
+            specular: 0.3,
+            fresnel: 0.9,
+            tintStrength: 0.06,
+            brightness: 0.08,
+            shadowOpacity: 0.3,
+            shadowSpread: 18,
+          }}
+        >
+          <Link
+            href="/register"
+            className="block px-6 py-2.5 rounded-full bg-white/15 hover:bg-white/25 text-white font-semibold text-[15px] tracking-[-0.014em] whitespace-nowrap transition-colors"
+          >
+            Create account
+          </Link>
+          <Link
+            href="/login"
+            className="block px-6 py-2.5 rounded-full text-white font-semibold text-[15px] tracking-[-0.014em] whitespace-nowrap hover:bg-white/10 transition-colors"
+          >
+            Sign in
+          </Link>
         </GlassPanel>
       </LiquidGlassWrapper>
 
