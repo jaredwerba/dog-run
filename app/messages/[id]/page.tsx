@@ -73,17 +73,30 @@ function RunPlanner({
       (r.status === 'confirmed' && String(r.run_date).slice(0, 10) >= today)
   );
 
-  async function propose() {
-    if (!date || busy) return;
+  // Most recent completed run — powers "book the same run next week"
+  const lastCompleted = !active
+    ? runs.find((r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < today)
+    : undefined;
+
+  async function proposeRun(d: string, t: string, loc: string) {
+    if (!d || busy) return;
     setBusy(true);
     await fetch('/api/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, date, time, location }),
+      body: JSON.stringify({ conversationId, date: d, time: t, location: loc }),
     });
     setShowForm(false);
     setBusy(false);
     await onChanged();
+  }
+
+  function rebook() {
+    if (!lastCompleted) return;
+    // Same weekday/time/place, first occurrence after today
+    const next = new Date(`${String(lastCompleted.run_date).slice(0, 10)}T12:00:00`);
+    while (next.toISOString().slice(0, 10) <= today) next.setDate(next.getDate() + 7);
+    void proposeRun(next.toISOString().slice(0, 10), lastCompleted.run_time, lastCompleted.location);
   }
 
   async function respond(runId: string, action: 'accept' | 'decline' | 'cancel') {
@@ -115,12 +128,20 @@ function RunPlanner({
               {formatRunLabel(String(active.run_date).slice(0, 10), active.run_time)}
             </p>
             <p className="text-white/70 text-[13px] mb-3">{active.location}</p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <a
                 href={`/api/runs/${active.id}/ics`}
                 className="bg-oat text-pine font-bold text-[13px] px-4 py-2 rounded-lg hover:bg-linen transition-colors"
               >
                 Add to calendar
+              </a>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(active.location)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border border-oat/40 text-oat font-bold text-[13px] px-4 py-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                Directions
               </a>
               <button
                 onClick={() => respond(active.id, 'cancel')}
@@ -226,7 +247,7 @@ function RunPlanner({
             <div className="flex gap-2">
               <motion.button
                 {...press}
-                onClick={propose}
+                onClick={() => void proposeRun(date, time, location)}
                 disabled={!date || busy}
                 className="flex-1 bg-pine hover:bg-pine-deep text-oat font-bold text-[13px] py-2.5 rounded-lg transition-colors disabled:opacity-40"
               >
@@ -241,17 +262,33 @@ function RunPlanner({
             </div>
           </motion.div>
         ) : (
-          <motion.button
+          <motion.div
             key="cta"
-            {...press}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowForm(true)}
-            className="w-full bg-linen border border-dashed border-pine/40 text-pine font-bold text-[13px] py-2.5 rounded-xl hover:bg-white transition-colors"
+            className="space-y-2"
           >
-            📅 Plan a run — pick a time &amp; place
-          </motion.button>
+            {lastCompleted && (
+              <motion.button
+                {...press}
+                onClick={rebook}
+                disabled={busy}
+                className="w-full bg-pine text-oat font-bold text-[13px] py-2.5 rounded-xl hover:bg-pine-deep transition-colors disabled:opacity-50"
+              >
+                {busy
+                  ? 'Booking…'
+                  : `🔁 Book the same run next week — ${formatRunLabel(String(lastCompleted.run_date).slice(0, 10), lastCompleted.run_time).split(' · ')[1]} at ${lastCompleted.location.split(',')[0]}`}
+              </motion.button>
+            )}
+            <motion.button
+              {...press}
+              onClick={() => setShowForm(true)}
+              className="w-full bg-linen border border-dashed border-pine/40 text-pine font-bold text-[13px] py-2.5 rounded-xl hover:bg-white transition-colors"
+            >
+              📅 Plan a run — pick a time &amp; place
+            </motion.button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

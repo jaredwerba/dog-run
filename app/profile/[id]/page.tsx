@@ -19,6 +19,7 @@ interface Profile {
   photo_url?: string | null;
   route: string;
   schedule?: Schedule | null;
+  quirks?: string | null;
 }
 
 const PACE_LABEL: Record<string, string> = {
@@ -163,6 +164,9 @@ export default function ProfilePage() {
         <div className="bg-linen rounded-xl border border-soil/10 divide-y divide-soil/10">
           <Row icon="🗺️" label="Route" value="Castle Island, South Boston" />
           <Row icon="👟" label="Pace" value={PACE_LABEL[profile.pace] ?? profile.pace} />
+          {type === 'dog' && profile.quirks?.trim() && (
+            <Row icon="🐾" label="Good to know" value={profile.quirks.trim()} />
+          )}
         </div>
 
         {/* Weekly schedule */}

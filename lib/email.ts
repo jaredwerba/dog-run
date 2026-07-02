@@ -135,6 +135,9 @@ export async function notifyRunProposed(args: {
   });
 }
 
+const mapsUrl = (location: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+
 export async function notifyRunConfirmed(args: {
   to: string;
   recipientName: string;
@@ -151,11 +154,53 @@ export async function notifyRunConfirmed(args: {
     bodyHtml: `<p>Hi ${args.recipientName},</p>
       <p>You and <strong>${args.otherName}</strong> are on:</p>
       <p style="background:#f6eedd;border-radius:6px;padding:12px 14px;">
-        <strong>${args.runLabel}</strong><br/>${args.location}
+        <strong>${args.runLabel}</strong><br/>
+        ${args.location} &middot; <a href="${mapsUrl(args.location)}" style="color:#2f4f38;font-weight:700;">Get directions</a>
       </p>
       <p>A calendar invite is attached — add it to your calendar and don&rsquo;t be late. Someone with four legs is counting on you.</p>`,
     cta: { label: 'View the run', url: threadUrl(args.conversationId) },
     ics: args.ics,
+  });
+}
+
+export async function notifyRunReminder(args: {
+  to: string;
+  recipientName: string;
+  otherName: string;
+  runLabel: string;
+  location: string;
+  conversationId: string;
+}): Promise<void> {
+  await send({
+    to: args.to,
+    subject: `Run today — ${args.runLabel} with ${args.otherName} 🐾`,
+    heading: 'You have a run today',
+    bodyHtml: `<p>Hi ${args.recipientName},</p>
+      <p>Today&rsquo;s the day — you&rsquo;re running with <strong>${args.otherName}</strong>:</p>
+      <p style="background:#f6eedd;border-radius:6px;padding:12px 14px;">
+        <strong>${args.runLabel}</strong><br/>
+        ${args.location} &middot; <a href="${mapsUrl(args.location)}" style="color:#2f4f38;font-weight:700;">Get directions</a>
+      </p>
+      <p>Bring water. The tail is already wagging.</p>`,
+    cta: { label: 'Open the conversation', url: threadUrl(args.conversationId) },
+  });
+}
+
+export async function notifyRunFollowup(args: {
+  to: string;
+  recipientName: string;
+  otherName: string;
+  runLabel: string;
+  conversationId: string;
+}): Promise<void> {
+  await send({
+    to: args.to,
+    subject: `How was your run with ${args.otherName}?`,
+    heading: 'How&rsquo;d it go? 🎾',
+    bodyHtml: `<p>Hi ${args.recipientName},</p>
+      <p>Hope the run with <strong>${args.otherName}</strong> (${args.runLabel}) was a good one.</p>
+      <p>Good running buddies are hard to find — lock in the next one while the legs are still warm. There&rsquo;s a one-tap <strong>&ldquo;book the same run next week&rdquo;</strong> button waiting in your conversation.</p>`,
+    cta: { label: 'Book the next run', url: threadUrl(args.conversationId) },
   });
 }
 

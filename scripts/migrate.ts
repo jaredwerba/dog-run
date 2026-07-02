@@ -101,6 +101,11 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS runs_conversation_id_idx ON runs(conversation_id)`;
 
+  // Cron email tracking + dog personality notes
+  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS followup_sent_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE dog_profiles ADD COLUMN IF NOT EXISTS quirks TEXT DEFAULT ''`;
+
   console.log('Migrations complete.');
 }
 

@@ -8,9 +8,11 @@ interface Props {
   subtitle: string;
   tags: { label: string; value: string }[];
   viewing: 'runners' | 'dogs';
+  /* Match-quality badges, e.g. "4 shared times", "Same pace" */
+  badges?: string[];
 }
 
-export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewing }: Props) {
+export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewing, badges = [] }: Props) {
   return (
     <Link
       href={`/profile/${id}`}
@@ -22,6 +24,18 @@ export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewi
         ) : (
           <div className="flex items-center justify-center h-full text-6xl">
             {viewing === 'dogs' ? '🐶' : '🏃'}
+          </div>
+        )}
+        {badges.length > 0 && (
+          <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
+            {badges.map((b) => (
+              <span
+                key={b}
+                className="bg-pine text-oat text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm"
+              >
+                {b}
+              </span>
+            ))}
           </div>
         )}
       </div>

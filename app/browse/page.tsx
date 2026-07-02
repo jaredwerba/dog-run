@@ -7,7 +7,12 @@ import ProfileCard from '@/components/ProfileCard';
 import JoggerDoodle from '@/components/JoggerDoodle';
 import { spring } from '@/components/ux';
 
-interface DogProfile {
+interface MatchInfo {
+  overlap: number;
+  pace_match: boolean;
+}
+
+interface DogProfile extends MatchInfo {
   id: string;
   dog_name: string;
   breed: string;
@@ -16,13 +21,20 @@ interface DogProfile {
   photo_url?: string | null;
 }
 
-interface RunnerProfile {
+interface RunnerProfile extends MatchInfo {
   id: string;
   runner_name: string;
   pace: string;
   typical_distance: string;
   availability: string;
   photo_url?: string | null;
+}
+
+function matchBadges(p: MatchInfo): string[] {
+  const badges: string[] = [];
+  if (p.overlap > 0) badges.push(`${p.overlap} shared time${p.overlap === 1 ? '' : 's'}`);
+  if (p.pace_match) badges.push('Same pace');
+  return badges;
 }
 
 type Profile = DogProfile | RunnerProfile;
@@ -39,6 +51,9 @@ export default function BrowsePage() {
   const [viewing, setViewing] = useState<'runners' | 'dogs'>('runners');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [needsPhoto, setNeedsPhoto] = useState(false);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     fetch('/api/me')
@@ -53,9 +68,25 @@ export default function BrowsePage() {
         if (d.error) { router.push('/register'); return; }
         setProfiles(d.profiles);
         setViewing(d.viewing);
+        setNeedsPhoto(Boolean(d.me?.hasProfile) && !d.me?.hasPhoto);
         setLoading(false);
       });
   }, [router]);
+
+  async function share() {
+    const data = {
+      title: 'Go Dogs Boston',
+      text: 'Boston runners + high-energy dogs, matched for runs. Free to join.',
+      url: 'https://www.rundog.boston',
+    };
+    if (navigator.share) {
+      try { await navigator.share(data); } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(data.url);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
+  }
 
   const filtered = filter === 'all'
     ? profiles
@@ -75,6 +106,35 @@ export default function BrowsePage() {
             : 'Runners who love running with dogs'}
         </p>
       </div>
+
+      {/* Profile-completeness nudge */}
+      {needsPhoto && !nudgeDismissed && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring}
+          className="mx-4 mb-4 bg-linen border border-sunlight/60 rounded-xl px-4 py-3 flex items-center gap-3"
+        >
+          <span className="text-xl" aria-hidden>📸</span>
+          <p className="flex-1 text-[13px] text-soil/75 leading-snug">
+            <span className="font-bold text-soil">Add a photo to your profile</span> — profiles
+            with photos get far more run requests.
+          </p>
+          <button
+            onClick={() => router.push('/profile/setup')}
+            className="shrink-0 bg-pine text-oat text-[12px] font-bold px-3 py-1.5 rounded-lg hover:bg-pine-deep transition-colors"
+          >
+            Add photo
+          </button>
+          <button
+            onClick={() => setNudgeDismissed(true)}
+            aria-label="Dismiss"
+            className="shrink-0 text-soil/40 hover:text-soil/70 text-[16px] leading-none"
+          >
+            ×
+          </button>
+        </motion.div>
+      )}
 
       {/* Pace filter — iOS segmented control */}
       <div className="px-4 mb-5">
@@ -102,11 +162,26 @@ export default function BrowsePage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-soil/50 text-sm">Loading…</div>
+      ) : profiles.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-soil/50 text-sm gap-2 px-6 text-center">
+          <JoggerDoodle className="w-72 mb-2" />
+          <p className="font-display text-[20px] text-soil/70">You&apos;re early — nice.</p>
+          <p className="max-w-xs">
+            No {viewing === 'dogs' ? 'dogs' : 'runners'} nearby yet. Know someone with
+            {viewing === 'dogs' ? ' a high-energy dog' : ' running shoes'}? Send them this way.
+          </p>
+          <button
+            onClick={share}
+            className="mt-3 bg-pine hover:bg-pine-deep text-oat font-bold text-[14px] px-6 py-2.5 rounded-lg transition-colors"
+          >
+            {shared ? 'Link copied ✓' : 'Share Go Dogs Boston'}
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-soil/50 text-sm gap-2">
           <JoggerDoodle className="w-72 mb-2" />
           <p className="font-display text-[20px] text-soil/70">Nobody on the trail yet</p>
-          <p>No {viewing === 'dogs' ? 'dogs' : 'runners'} found — try another pace.</p>
+          <p>No {viewing === 'dogs' ? 'dogs' : 'runners'} at this pace — try another.</p>
         </div>
       ) : (
         <div className="px-4 grid grid-cols-2 gap-3">
@@ -125,6 +200,7 @@ export default function BrowsePage() {
                   subtitle={p.breed}
                   tags={[{ label: 'Pace', value: PACE_LABELS[p.pace] ?? p.pace }]}
                   viewing="dogs"
+                  badges={matchBadges(p)}
                 />
               ) : (
                 <ProfileCard
@@ -137,6 +213,7 @@ export default function BrowsePage() {
                     { label: 'When', value: (p as RunnerProfile).availability },
                   ]}
                   viewing="runners"
+                  badges={matchBadges(p as RunnerProfile)}
                 />
               )}
             </motion.div>

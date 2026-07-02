@@ -30,6 +30,7 @@ export default function ProfileSetupPage() {
   const [breed, setBreed] = useState('');
   const [pace, setPace] = useState('');
   const [ownerName, setOwnerName] = useState('');
+  const [quirks, setQuirks] = useState('');
 
   const [runnerName, setRunnerName] = useState('');
   const [runnerPace, setRunnerPace] = useState('');
@@ -51,6 +52,7 @@ export default function ProfileSetupPage() {
           setBreed(p.breed ?? '');
           setPace(p.pace ?? '');
           setOwnerName(p.owner_name ?? '');
+          setQuirks(p.quirks ?? '');
         } else {
           setRunnerName(p.runner_name ?? '');
           setRunnerPace(p.pace ?? '');
@@ -77,7 +79,7 @@ export default function ProfileSetupPage() {
     try {
       const body =
         role === 'owner'
-          ? { dogName, breed, pace, ownerName, photoUrl, schedule }
+          ? { dogName, breed, pace, ownerName, photoUrl, schedule, quirks }
           : { runnerName, pace: runnerPace, typicalDistance, photoUrl, schedule };
 
       const res = await fetch('/api/profile', {
@@ -140,6 +142,16 @@ export default function ProfileSetupPage() {
             </Field>
             <Field label="Your name">
               <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className={inputCls} placeholder="e.g. Sarah K." />
+            </Field>
+            <Field label="Quirks & notes">
+              <textarea
+                value={quirks}
+                onChange={(e) => setQuirks(e.target.value)}
+                rows={2}
+                className={`${inputCls} resize-none text-[15px]`}
+                placeholder="Pulls a little, loves tennis balls, afraid of skateboards…"
+              />
+              <p className="text-xs text-soil/45">Runners read this before the first run — the more honest, the better.</p>
             </Field>
           </>
         ) : (
