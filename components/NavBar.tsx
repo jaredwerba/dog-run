@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 
 interface UserInfo {
   role: 'owner' | 'runner';
@@ -49,7 +50,7 @@ export default function NavBar() {
   return (
     <nav className="glass-nav fixed top-0 inset-x-0 z-50 px-4 h-12 flex items-center justify-between">
       <Link href={user ? '/browse' : '/'} className="text-[17px] font-semibold tracking-tight text-white">
-        DogRun
+        Go Dogs Boston
       </Link>
 
       {user ? (
@@ -60,9 +61,14 @@ export default function NavBar() {
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             {unread > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 15 }}
+                className="absolute -top-0.5 -right-0.5 bg-clay text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
+              >
                 {unread > 9 ? '9+' : unread}
-              </span>
+              </motion.span>
             )}
           </Link>
 
@@ -88,13 +94,13 @@ export default function NavBar() {
         <div className="flex items-center gap-3">
           <Link
             href="/login"
-            className="text-sm font-medium text-bright-blue hover:underline transition-colors"
+            className="text-sm font-medium text-white/80 hover:text-white transition-colors"
           >
             Sign in
           </Link>
           <Link
             href="/register"
-            className="bg-apple-blue hover:bg-apple-blue-hover text-white text-xs font-medium px-4 py-1.5 rounded-full transition-colors"
+            className="bg-clay hover:bg-clay-deep text-white text-xs font-medium px-4 py-1.5 rounded-full transition-colors"
           >
             Join
           </Link>

@@ -120,7 +120,7 @@ export default function CastleIslandMap() {
   return (
     <div
       ref={containerRef}
-      className="w-full h-64 sm:h-72 rounded-2xl overflow-hidden bg-light-gray"
+      className="w-full h-64 sm:h-72 rounded-2xl overflow-hidden bg-moss/20"
       style={{ zIndex: 0 }}
     />
   );

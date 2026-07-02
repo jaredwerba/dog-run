@@ -1,54 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  /* Apple Design Tokens */
-  --apple-blue: #0071e3;
-  --apple-blue-hover: #0077ed;
-  --link-blue: #0066cc;
-  --bright-blue: #2997ff;
-  --near-black: #1d1d1f;
-  --light-gray: #f5f5f7;
-  --dark-surface-1: #272729;
-  --dark-surface-2: #262628;
-  --text-primary: #1d1d1f;
-  --text-secondary: rgba(0, 0, 0, 0.8);
-  --text-tertiary: rgba(0, 0, 0, 0.48);
-  --apple-shadow: 3px 5px 30px rgba(0, 0, 0, 0.22);
-
-  --background: #f5f5f7;
-  --foreground: #1d1d1f;
+  --background: #f6eedd;
+  --foreground: #362b1f;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-apple-blue: #0071e3;
-  --color-apple-blue-hover: #0077ed;
-  --color-link-blue: #0066cc;
-  --color-bright-blue: #2997ff;
-  --color-near-black: #1d1d1f;
-  --color-light-gray: #f5f5f7;
-  --color-dark-surface: #272729;
-  --color-neutral-placeholder: #e8e8ed;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-inter), "Helvetica Neue", sans-serif;
+
+  /* Go Dogs Boston palette — pine forest, bark, morning sun, oat paper */
+  --color-pine: #2f4f38;
+  --color-pine-deep: #22392a;
+  --color-fern: #567c52;
+  --color-moss: #8aa87a;
+  --color-bark: #5a4534;
+  --color-soil: #362b1f;
+  --color-sunlight: #e3a63c;
+  --color-clay: #bd6b44;
+  --color-clay-deep: #a55835;
+  --color-oat: #f6eedd;
+  --color-linen: #fbf6ea;
+  --color-tennis: #c9d15f;
+  --font-display: var(--font-bevan), Georgia, serif;
+  --font-body: var(--font-public), var(--font-sans);
+  --font-data: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Apple-style shadow utility */
-.apple-shadow {
-  box-shadow: 3px 5px 30px rgba(0, 0, 0, 0.22);
+/* Native-app touch feel */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  touch-action: manipulation;
 }
 
-/* Glass nav */
+/* Glass nav — warm pine tint */
 .glass-nav {
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: rgba(34, 57, 42, 0.85);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+}
+
+/* Trail-sign CTA — arrow-shaped end like a wooden trail marker */
+.trail-sign {
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%);
 }

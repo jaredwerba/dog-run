@@ -1,25 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'motion/react';
 import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser';
-import LiquidGlassWrapper, { GlassPanel } from '@/components/LiquidGlassWrapper';
+import { spring, press } from '@/components/ux';
 
 type Step = 'role' | 'email' | 'passkey';
+
+/* iOS navigation push/pop between steps */
+const stepVariants = {
+  enter: (dir: number) => ({ x: dir * 56, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: dir * -56, opacity: 0 }),
+};
 
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('role');
+  const [dir, setDir] = useState(1);
+
+  function goTo(next: Step, direction: 1 | -1) {
+    setDir(direction);
+    setStep(next);
+  }
   const [role, setRole] = useState<'owner' | 'runner' | null>(null);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // null until mounted — avoids a server/client hydration mismatch
+  const [supported, setSupported] = useState<boolean | null>(null);
 
-  if (!browserSupportsWebAuthn()) {
+  useEffect(() => {
+    setSupported(browserSupportsWebAuthn());
+  }, []);
+
+  if (supported === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-light-gray">
-        <p className="text-black/60 text-center text-[17px] tracking-[-0.024em]">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-oat">
+        <p className="text-soil/60 text-center text-[17px]">
           Your browser doesn&apos;t support passkeys. Try Chrome, Safari, or Edge on a modern device.
         </p>
       </div>
@@ -57,110 +77,114 @@ export default function RegisterPage() {
     }
   }
 
-  const glassDefaults = {
-    cornerRadius: 20,
-    refraction: 0.015,
-    blurAmount: 0.15,
-    specular: 0.08,
-    fresnel: 0.5,
-    shadowOpacity: 0.12,
-    shadowSpread: 10,
-    tintStrength: 0.03,
-    zRadius: 16,
-  };
+  const cardCls = 'w-full max-w-sm bg-linen border border-soil/10 rounded-xl shadow-sm';
 
   return (
-    <LiquidGlassWrapper
-      className="min-h-screen bg-light-gray flex flex-col items-center justify-center px-6 pt-20 pb-10"
-      defaults={glassDefaults}
-    >
-      {/* Background visuals for glass refraction */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-10 w-64 h-64 rounded-full bg-apple-blue/10 blur-3xl" />
-        <div className="absolute bottom-1/4 -right-10 w-72 h-72 rounded-full bg-bright-blue/8 blur-3xl" />
+    <div className="min-h-screen bg-oat flex flex-col items-center justify-center px-6 pt-20 pb-10">
+      <div className="text-center mb-8">
+        <h1 className="font-display text-[26px] text-soil leading-tight">Create your account</h1>
       </div>
 
-      <div className="text-center mb-8 relative z-10">
-        <h1 className="text-[28px] font-semibold text-near-black leading-tight tracking-tight">
-          Create your account
-        </h1>
-      </div>
+      <AnimatePresence mode="wait" custom={dir} initial={false}>
+        {step === 'role' && (
+          <motion.div
+            key="role"
+            custom={dir}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={spring}
+            className="w-full flex flex-col items-center"
+          >
+            <p className="text-soil/55 text-sm text-center mb-4">I am a…</p>
+            <motion.button
+              {...press}
+              className={`${cardCls} p-5 text-left cursor-pointer mb-3 hover:border-pine/50 hover:shadow-md transition-shadow`}
+              onClick={() => { setRole('owner'); goTo('email', 1); }}
+            >
+              <div className="text-3xl mb-1">🐶</div>
+              <div className="font-bold text-soil text-[17px]">Dog Owner</div>
+              <div className="text-sm text-soil/55">Find a runner to join my dog&apos;s run</div>
+            </motion.button>
+            <motion.button
+              {...press}
+              className={`${cardCls} p-5 text-left cursor-pointer hover:border-pine/50 hover:shadow-md transition-shadow`}
+              onClick={() => { setRole('runner'); goTo('email', 1); }}
+            >
+              <div className="text-3xl mb-1">🏃</div>
+              <div className="font-bold text-soil text-[17px]">Runner</div>
+              <div className="text-sm text-soil/55">Find a dog to run with around Boston</div>
+            </motion.button>
+            <p className="text-center text-sm text-soil/55 pt-4">
+              Already have an account?{' '}
+              <Link href="/login" className="text-pine font-bold hover:underline">Sign in</Link>
+            </p>
+          </motion.div>
+        )}
 
-      {step === 'role' && (
-        <>
-          <p className="text-black/48 text-sm text-center tracking-[-0.014em] mb-4 relative z-10">I am a…</p>
-          <GlassPanel
-            className="w-full max-w-sm p-5 text-left cursor-pointer mb-3"
-            config={{ cornerRadius: 20, button: true, blurAmount: 0.2, specular: 0.1 }}
-            onClick={() => { setRole('owner'); setStep('email'); }}
+        {step === 'email' && (
+          <motion.div
+            key="email"
+            custom={dir}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={spring}
+            className={`${cardCls} p-6 space-y-4`}
           >
-            <div className="text-3xl mb-1">🐶</div>
-            <div className="font-semibold text-near-black text-[17px] tracking-[-0.024em]">Dog Owner</div>
-            <div className="text-sm text-black/48 tracking-[-0.014em]">Find a runner to join my dog&apos;s run</div>
-          </GlassPanel>
-          <GlassPanel
-            className="w-full max-w-sm p-5 text-left cursor-pointer"
-            config={{ cornerRadius: 20, button: true, blurAmount: 0.2, specular: 0.1 }}
-            onClick={() => { setRole('runner'); setStep('email'); }}
-          >
-            <div className="text-3xl mb-1">🏃</div>
-            <div className="font-semibold text-near-black text-[17px] tracking-[-0.024em]">Runner</div>
-            <div className="text-sm text-black/48 tracking-[-0.014em]">Find a dog to run with around Boston</div>
-          </GlassPanel>
-          <p className="text-center text-sm text-black/48 pt-4 tracking-[-0.014em] relative z-10">
-            Already have an account?{' '}
-            <Link href="/login" className="text-link-blue hover:underline font-medium">Sign in</Link>
-          </p>
-        </>
-      )}
+            <button onClick={() => goTo('role', -1)} className="text-sm text-pine font-medium hover:underline">← Back</button>
+            <h2 className="text-xl font-bold text-soil">Your email address</h2>
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
+              className="w-full border border-soil/15 rounded-lg px-4 py-3 text-[17px] focus:outline-none focus:ring-2 focus:ring-pine bg-white text-soil placeholder:text-soil/30"
+              autoFocus
+              autoComplete="email"
+            />
+            {error && <p className="text-clay-deep text-sm font-medium">{error}</p>}
+            <motion.button
+              {...press}
+              onClick={() => { if (email.includes('@')) goTo('passkey', 1); }}
+              disabled={!email.includes('@')}
+              className="w-full bg-pine hover:bg-pine-deep text-oat font-bold py-3 rounded-lg disabled:opacity-40 text-[16px] transition-colors"
+            >
+              Continue
+            </motion.button>
+          </motion.div>
+        )}
 
-      {step === 'email' && (
-        <GlassPanel
-          className="w-full max-w-sm p-6 space-y-4"
-          config={{ cornerRadius: 20, blurAmount: 0.2, specular: 0.1 }}
-        >
-          <button onClick={() => setStep('role')} className="text-sm text-link-blue hover:underline">← Back</button>
-          <h2 className="text-xl font-semibold text-near-black tracking-tight">Your email address</h2>
-          <input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
-            className="w-full border border-black/10 rounded-lg px-4 py-3 text-[17px] tracking-[-0.024em] focus:outline-none focus:ring-2 focus:ring-apple-blue bg-white/80 text-near-black placeholder:text-black/30"
-            autoFocus
-            autoComplete="email"
-          />
-          {error && <p className="text-red-500 text-sm tracking-[-0.014em]">{error}</p>}
-          <button
-            onClick={() => { if (email.includes('@')) setStep('passkey'); }}
-            disabled={!email.includes('@')}
-            className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-40 text-[17px] transition-colors"
+        {step === 'passkey' && (
+          <motion.div
+            key="passkey"
+            custom={dir}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={spring}
+            className={`${cardCls} p-6 space-y-4`}
           >
-            Continue
-          </button>
-        </GlassPanel>
-      )}
-
-      {step === 'passkey' && (
-        <GlassPanel
-          className="w-full max-w-sm p-6 space-y-4"
-          config={{ cornerRadius: 20, blurAmount: 0.2, specular: 0.1 }}
-        >
-          <button onClick={() => setStep('email')} className="text-sm text-link-blue hover:underline">← Back</button>
-          <h2 className="text-xl font-semibold text-near-black tracking-tight">Set up your passkey</h2>
-          <p className="text-black/48 text-sm tracking-[-0.014em]">
-            A passkey uses Face ID, Touch ID, or your device PIN — no password needed.
-          </p>
-          {error && <p className="text-red-500 text-sm tracking-[-0.014em]">{error}</p>}
-          <button
-            onClick={handleRegister}
-            disabled={loading}
-            className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2 text-[17px] transition-colors"
-          >
-            {loading ? <span className="animate-spin">⏳</span> : 'Create passkey'}
-          </button>
-        </GlassPanel>
-      )}
-    </LiquidGlassWrapper>
+            <button onClick={() => goTo('email', -1)} className="text-sm text-pine font-medium hover:underline">← Back</button>
+            <h2 className="text-xl font-bold text-soil">Set up your passkey</h2>
+            <p className="text-soil/55 text-sm">
+              A passkey uses Face ID, Touch ID, or your device PIN — no password needed.
+            </p>
+            {error && <p className="text-clay-deep text-sm font-medium">{error}</p>}
+            <motion.button
+              {...press}
+              onClick={handleRegister}
+              disabled={loading}
+              className="w-full bg-pine hover:bg-pine-deep text-oat font-bold py-3 rounded-lg disabled:opacity-60 text-[16px] transition-colors"
+            >
+              {loading ? 'Waiting for passkey…' : 'Create passkey'}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

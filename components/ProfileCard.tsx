@@ -14,9 +14,9 @@ export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewi
   return (
     <Link
       href={`/profile/${id}`}
-      className="block bg-white rounded-lg apple-shadow overflow-hidden active:scale-[0.98] transition-transform"
+      className="block bg-linen rounded-xl border border-soil/10 shadow-sm overflow-hidden hover:shadow-md hover:border-pine/40 active:scale-[0.98] transition-all"
     >
-      <div className="relative h-40 bg-light-gray">
+      <div className="relative h-40 bg-moss/25">
         {photoUrl ? (
           <Image src={photoUrl} alt={title} fill className="object-cover" />
         ) : (
@@ -26,13 +26,13 @@ export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewi
         )}
       </div>
       <div className="p-4">
-        <h3 className="font-semibold text-near-black text-[17px] tracking-[-0.024em]">{title}</h3>
-        <p className="text-sm text-black/48 mb-3 tracking-[-0.014em]">{subtitle}</p>
-        <div className="flex flex-wrap gap-2">
+        <h3 className="font-bold text-soil text-[16px]">{title}</h3>
+        <p className="text-sm text-soil/55 mb-3">{subtitle}</p>
+        <div className="flex flex-wrap gap-1.5">
           {tags.map((t) => (
             <span
               key={t.label}
-              className="text-xs font-medium px-2 py-0.5 rounded-full bg-light-gray text-near-black tracking-[-0.008em]"
+              className="font-data text-[10px] tracking-[0.08em] uppercase px-2 py-1 rounded-md bg-oat text-bark border border-soil/10"
             >
               {t.label === 'Pace' ? `${t.value} pace` : t.value}
             </span>

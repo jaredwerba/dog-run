@@ -1,13 +1,26 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Bevan, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const bevan = Bevan({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-bevan",
+});
+const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-public" });
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plex-mono",
+});
 
 export const metadata: Metadata = {
-  title: "DogRun — Find your run buddy in Boston",
-  description: "Match dog owners with runners at Castle Island and across Boston.",
+  title: "Go Dogs Boston — Runners and high-energy dogs, matched",
+  description:
+    "Go Dogs Boston matches local runners with high-energy dogs and their owners. Runners get a training partner. Dogs get their miles.",
 };
 
 export default function RootLayout({
@@ -16,7 +29,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`h-full ${inter.variable}`}>
+    <html
+      lang="en"
+      className={`h-full ${inter.variable} ${bevan.variable} ${publicSans.variable} ${plexMono.variable}`}
+    >
       <body className="min-h-full flex flex-col antialiased">
         <NavBar />
         {children}

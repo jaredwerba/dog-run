@@ -1,5 +1,8 @@
 'use client';
 
+import { motion } from 'motion/react';
+import { pressFirm } from '@/components/ux';
+
 export type Schedule = Record<string, string[]>;
 
 const DAYS = [
@@ -48,34 +51,35 @@ export default function SchedulePicker({ value, onChange }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-black/48 tracking-[-0.008em]">
+      <p className="text-xs text-soil/50">
         Tap your available time slots · {totalSelected} selected
       </p>
-      <div className="bg-white rounded-lg border border-black/[0.04] overflow-hidden">
+      <div className="bg-linen rounded-xl border border-soil/10 overflow-hidden">
         {DAYS.map((day, di) => {
           const selected = value[day.key] ?? [];
           return (
             <div
               key={day.key}
-              className={`flex items-center gap-2 px-3 py-2 ${di < DAYS.length - 1 ? 'border-b border-black/[0.04]' : ''}`}
+              className={`flex items-center gap-2 px-3 py-2 ${di < DAYS.length - 1 ? 'border-b border-soil/10' : ''}`}
             >
-              <span className="w-8 text-xs font-semibold text-black/48 shrink-0">{day.label}</span>
+              <span className="font-data w-8 text-[10px] uppercase font-semibold text-soil/50 shrink-0">{day.label}</span>
               <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-1 scrollbar-none">
                 {SLOTS.map((slot) => {
                   const active = selected.includes(slot.key);
                   return (
-                    <button
+                    <motion.button
                       key={slot.key}
+                      {...pressFirm}
                       type="button"
                       onClick={() => toggle(day.key, slot.key)}
                       className={`shrink-0 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
                         active
-                          ? 'bg-apple-blue text-white'
-                          : 'bg-light-gray text-black/48 hover:bg-neutral-placeholder'
+                          ? 'bg-pine text-oat'
+                          : 'bg-oat text-soil/50 hover:bg-moss/30'
                       }`}
                     >
                       {slot.label}
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>

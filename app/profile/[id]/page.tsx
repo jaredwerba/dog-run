@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'motion/react';
 import { type Schedule } from '@/components/SchedulePicker';
-import LiquidGlassWrapper, { GlassPanel } from '@/components/LiquidGlassWrapper';
+import { spring, press, pressFirm } from '@/components/ux';
 
 interface Profile {
   id: string;
@@ -85,7 +86,7 @@ export default function ProfilePage() {
     setMsgText(`Hi! I'd love to run at Castle Island on ${dayLabel} at ${timeLabel}. Would that work for you?`);
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-black/48 text-sm">Loading…</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-soil/50 text-sm">Loading…</div>;
   if (!profile || !type) return null;
 
   const name = type === 'dog' ? profile.dog_name! : profile.runner_name!;
@@ -93,19 +94,9 @@ export default function ProfilePage() {
   const hasSchedule = Object.values(schedule).some((slots) => slots.length > 0);
 
   return (
-    <div className="min-h-screen bg-light-gray pt-12">
+    <div className="min-h-screen bg-oat pt-12">
       {/* Hero */}
-      <LiquidGlassWrapper
-        className="relative h-52 bg-near-black"
-        defaults={{
-          cornerRadius: 0,
-          refraction: 0.01,
-          blurAmount: 0.15,
-          specular: 0.05,
-          shadowOpacity: 0,
-          zRadius: 10,
-        }}
-      >
+      <div className="relative h-52 bg-gradient-to-br from-fern to-pine overflow-hidden">
         {profile.photo_url ? (
           <Image src={profile.photo_url} alt={name} fill className="object-cover" crossOrigin="anonymous" />
         ) : (
@@ -113,28 +104,19 @@ export default function ProfilePage() {
             {type === 'dog' ? '🐶' : '🏃'}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-pine-deep/70 to-transparent" />
 
-        {/* Glass name badge overlapping bottom of hero */}
-        <GlassPanel
-          className="absolute bottom-4 left-5 right-5 px-5 py-3"
-          config={{
-            cornerRadius: 16,
-            blurAmount: 0.3,
-            refraction: 0.02,
-            specular: 0.15,
-            tintStrength: 0.05,
-          }}
-        >
-          <h1 className="text-2xl font-semibold text-white leading-tight tracking-tight">{name}</h1>
-          {type === 'dog' && <p className="text-white/60 text-sm tracking-[-0.014em]">{profile.breed} · owned by {profile.owner_name}</p>}
-          {type === 'runner' && <p className="text-white/60 text-sm tracking-[-0.014em]">Runs {profile.typical_distance}</p>}
-        </GlassPanel>
-      </LiquidGlassWrapper>
+        {/* Name badge overlapping bottom of hero */}
+        <div className="absolute bottom-4 left-5 right-5 px-5 py-3 rounded-xl bg-pine-deep/60 backdrop-blur-md border border-white/10">
+          <h1 className="font-display text-[22px] text-white leading-tight">{name}</h1>
+          {type === 'dog' && <p className="text-white/70 text-sm">{profile.breed} · owned by {profile.owner_name}</p>}
+          {type === 'runner' && <p className="text-white/70 text-sm">Runs {profile.typical_distance}</p>}
+        </div>
+      </div>
 
       <div className="px-5 py-5 max-w-sm mx-auto space-y-4">
         {/* Details */}
-        <div className="bg-white rounded-lg divide-y divide-black/[0.04]">
+        <div className="bg-linen rounded-xl border border-soil/10 divide-y divide-soil/10">
           <Row icon="🗺️" label="Route" value="Castle Island, South Boston" />
           <Row icon="👟" label="Pace" value={PACE_LABEL[profile.pace] ?? profile.pace} />
         </div>
@@ -142,28 +124,33 @@ export default function ProfilePage() {
         {/* Weekly schedule */}
         {hasSchedule ? (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-near-black tracking-[-0.014em]">
+            <h2 className="text-sm font-bold text-soil">
               {type === 'dog' ? 'When they run — tap a slot to request' : 'Available to run — tap a slot to request'}
             </h2>
-            <div className="bg-white rounded-lg border border-black/[0.04] overflow-hidden">
+            <div className="bg-linen rounded-xl border border-soil/10 overflow-hidden">
               {DAYS.map((day, di) => {
                 const slots = schedule[day.key] ?? [];
                 if (slots.length === 0) return null;
                 return (
                   <div
                     key={day.key}
-                    className={`flex items-center gap-2 px-3 py-2 ${di > 0 ? 'border-t border-black/[0.04]' : ''}`}
+                    className={`flex items-center gap-2 px-3 py-2 ${di > 0 ? 'border-t border-soil/10' : ''}`}
                   >
-                    <span className="w-8 text-xs font-semibold text-black/48 shrink-0">{day.label}</span>
+                    <span className="font-data w-8 text-[10px] uppercase font-semibold text-soil/50 shrink-0">{day.label}</span>
                     <div className="flex gap-1.5 flex-wrap">
                       {slots.map((slot) => (
-                        <button
+                        <motion.button
                           key={slot}
+                          {...pressFirm}
                           onClick={() => handleSlotClick(day.key, slot)}
-                          className="px-2.5 py-1 bg-apple-blue/10 text-apple-blue rounded-md text-xs font-semibold hover:bg-apple-blue hover:text-white transition-colors"
+                          className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
+                            selectedSlot?.day === day.key && selectedSlot?.time === slot
+                              ? 'bg-pine text-oat'
+                              : 'bg-pine/10 text-pine hover:bg-pine hover:text-oat'
+                          }`}
                         >
                           {SLOT_LABEL[slot] ?? slot}
-                        </button>
+                        </motion.button>
                       ))}
                     </div>
                   </div>
@@ -172,48 +159,64 @@ export default function ProfilePage() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-black/48 text-center py-2 tracking-[-0.014em]">No schedule set yet</p>
+          <p className="text-sm text-soil/50 text-center py-2">No schedule set yet</p>
         )}
 
-        {/* Request a run / message form */}
-        {selectedSlot ? (
-          <div className="bg-white apple-shadow rounded-lg p-4 space-y-3">
-            <p className="text-sm font-semibold text-near-black tracking-[-0.014em]">
-              Request a run on {DAYS.find((d) => d.key === selectedSlot.day)?.label} at {SLOT_LABEL[selectedSlot.time]}
-            </p>
-            <textarea
-              value={msgText}
-              onChange={(e) => setMsgText(e.target.value)}
-              rows={3}
-              className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue resize-none text-near-black"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedSlot(null)}
-                className="flex-1 py-2.5 rounded-lg border border-black/10 text-sm font-medium text-black/60"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => startConversation(msgText)}
-                disabled={messaging || !msgText.trim()}
-                className="flex-1 py-2.5 rounded-lg bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-medium disabled:opacity-50 transition-colors"
-              >
-                {messaging ? 'Sending…' : 'Send request'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => startConversation(`Hi! I came across your profile on DogRun and would love to connect about running at Castle Island together!`)}
-            disabled={messaging}
-            className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 text-[17px] transition-colors"
-          >
-            {messaging ? 'Opening…' : 'Send a message'}
-          </button>
-        )}
+        {/* Request a run / message form — slides up like an iOS sheet */}
+        <AnimatePresence mode="wait" initial={false}>
+          {selectedSlot ? (
+            <motion.div
+              key="sheet"
+              initial={{ opacity: 0, y: 28, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={spring}
+              className="bg-linen border border-soil/10 shadow-sm rounded-xl p-4 space-y-3"
+            >
+              <p className="text-sm font-bold text-soil">
+                Request a run on {DAYS.find((d) => d.key === selectedSlot.day)?.label} at {SLOT_LABEL[selectedSlot.time]}
+              </p>
+              <textarea
+                value={msgText}
+                onChange={(e) => setMsgText(e.target.value)}
+                rows={3}
+                className="w-full border border-soil/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pine resize-none bg-white text-soil"
+              />
+              <div className="flex gap-2">
+                <motion.button
+                  {...press}
+                  onClick={() => setSelectedSlot(null)}
+                  className="flex-1 py-2.5 rounded-lg border border-soil/15 text-sm font-medium text-soil/60 hover:bg-oat transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  {...press}
+                  onClick={() => startConversation(msgText)}
+                  disabled={messaging || !msgText.trim()}
+                  className="flex-1 py-2.5 rounded-lg bg-pine hover:bg-pine-deep text-oat text-sm font-bold disabled:opacity-50 transition-colors"
+                >
+                  {messaging ? 'Sending…' : 'Send request'}
+                </motion.button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.button
+              key="cta"
+              {...press}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => startConversation(`Hi! I came across your profile on Go Dogs Boston and would love to connect about running at Castle Island together!`)}
+              disabled={messaging}
+              className="w-full bg-pine hover:bg-pine-deep text-oat font-bold py-3 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 text-[16px] transition-colors"
+            >
+              {messaging ? 'Opening…' : 'Send a message'}
+            </motion.button>
+          )}
+        </AnimatePresence>
 
-        <Link href="/browse" className="block text-center text-sm text-link-blue font-medium py-1 hover:underline tracking-[-0.014em]">
+        <Link href="/browse" className="block text-center text-sm text-pine font-bold py-1 hover:underline">
           ← Back to browse
         </Link>
       </div>
@@ -226,8 +229,8 @@ function Row({ icon, label, value }: { icon: string; label: string; value: strin
     <div className="flex items-start gap-3 px-4 py-3">
       <span className="text-xl">{icon}</span>
       <div>
-        <p className="text-xs text-black/48 font-medium tracking-[-0.008em]">{label}</p>
-        <p className="text-sm text-near-black font-medium tracking-[-0.014em]">{value}</p>
+        <p className="font-data text-[10px] uppercase tracking-[0.1em] text-soil/45">{label}</p>
+        <p className="text-sm text-soil font-medium">{value}</p>
       </div>
     </div>
   );

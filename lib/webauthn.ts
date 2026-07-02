@@ -1,4 +1,4 @@
-export const RP_NAME = 'Dog Run';
+export const RP_NAME = 'Go Dogs Boston';
 
 export function getRpId(host: string): string {
   // Strip port if present

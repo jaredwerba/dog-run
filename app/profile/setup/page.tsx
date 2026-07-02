@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { motion } from 'motion/react';
 import SchedulePicker, { type Schedule } from '@/components/SchedulePicker';
+import { press, pressFirm } from '@/components/ux';
 
 const BREEDS = [
   'Mixed breed', 'Labrador', 'Golden Retriever', 'French Bulldog', 'German Shepherd',
@@ -98,16 +100,16 @@ export default function ProfileSetupPage() {
   if (!role) return null;
 
   return (
-    <div className="min-h-screen bg-light-gray pt-16 px-6 pb-12">
+    <div className="min-h-screen bg-oat pt-16 px-6 pb-12">
       <div className="max-w-sm mx-auto space-y-6">
-        <h1 className="text-[28px] font-semibold text-near-black leading-tight tracking-tight">
+        <h1 className="font-display text-[26px] text-soil leading-tight">
           {role === 'owner' ? 'Your dog\'s profile' : 'Your runner profile'}
         </h1>
 
         {/* Photo */}
         <div className="flex flex-col items-center gap-3">
           <div
-            className="w-24 h-24 rounded-full bg-neutral-placeholder overflow-hidden cursor-pointer border-2 border-dashed border-black/10 flex items-center justify-center"
+            className="w-24 h-24 rounded-full bg-moss/25 overflow-hidden cursor-pointer border-2 border-dashed border-bark/30 flex items-center justify-center"
             onClick={() => fileRef.current?.click()}
           >
             {photoUrl ? (
@@ -116,7 +118,7 @@ export default function ProfileSetupPage() {
               <span className="text-3xl">{role === 'owner' ? '🐶' : '🏃'}</span>
             )}
           </div>
-          <button onClick={() => fileRef.current?.click()} className="text-sm text-link-blue font-medium hover:underline" disabled={uploading}>
+          <button onClick={() => fileRef.current?.click()} className="text-sm text-pine font-bold hover:underline" disabled={uploading}>
             {uploading ? 'Uploading…' : photoUrl ? 'Change photo' : 'Add photo'}
           </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
@@ -151,15 +153,16 @@ export default function ProfileSetupPage() {
             <Field label="Typical distance">
               <div className="flex flex-wrap gap-2">
                 {DISTANCES.map((d) => (
-                  <button
+                  <motion.button
                     key={d}
+                    {...pressFirm}
                     onClick={() => setTypicalDistance(d)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      typicalDistance === d ? 'bg-apple-blue text-white' : 'bg-white text-near-black border border-black/10'
+                      typicalDistance === d ? 'bg-pine text-oat' : 'bg-linen text-soil border border-soil/15 hover:border-pine/40'
                     }`}
                   >
                     {d}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </Field>
@@ -170,15 +173,16 @@ export default function ProfileSetupPage() {
           <SchedulePicker value={schedule} onChange={setSchedule} />
         </Field>
 
-        {error && <p className="text-red-500 text-sm tracking-[-0.014em]">{error}</p>}
+        {error && <p className="text-clay-deep text-sm font-medium">{error}</p>}
 
-        <button
+        <motion.button
+          {...press}
           onClick={handleSave}
           disabled={saving}
-          className="w-full bg-apple-blue hover:bg-apple-blue-hover text-white font-medium py-3 rounded-lg disabled:opacity-50 text-[17px] transition-colors"
+          className="w-full bg-pine hover:bg-pine-deep text-oat font-bold py-3 rounded-lg disabled:opacity-50 text-[16px] transition-colors"
         >
           {saving ? 'Saving…' : 'Save profile'}
-        </button>
+        </motion.button>
       </div>
     </div>
   );
@@ -187,7 +191,7 @@ export default function ProfileSetupPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-near-black tracking-[-0.014em]">{label}</label>
+      <label className="block text-sm font-bold text-soil">{label}</label>
       {children}
     </div>
   );
@@ -202,19 +206,20 @@ function PacePicker({ value, onChange }: { value: string; onChange: (v: string) 
   return (
     <div className="flex gap-2">
       {options.map((o) => (
-        <button
+        <motion.button
           key={o.key}
+          {...pressFirm}
           onClick={() => onChange(o.key)}
-          className={`flex-1 py-2 px-1 rounded-lg border text-xs font-semibold text-center transition-colors ${
-            value === o.key ? 'bg-apple-blue text-white border-apple-blue' : 'bg-white text-near-black border-black/10'
+          className={`flex-1 py-2 px-1 rounded-lg border text-xs font-bold text-center transition-colors ${
+            value === o.key ? 'bg-pine text-oat border-pine' : 'bg-linen text-soil border-soil/15 hover:border-pine/40'
           }`}
         >
           <div>{o.label}</div>
-          <div className={`font-normal ${value === o.key ? 'text-white/70' : 'text-black/48'}`}>{o.desc}</div>
-        </button>
+          <div className={`font-normal ${value === o.key ? 'text-oat/70' : 'text-soil/50'}`}>{o.desc}</div>
+        </motion.button>
       ))}
     </div>
   );
 }
 
-const inputCls = 'w-full border border-black/10 rounded-lg px-4 py-3 text-[17px] tracking-[-0.024em] bg-white text-near-black focus:outline-none focus:ring-2 focus:ring-apple-blue placeholder:text-black/30';
+const inputCls = 'w-full border border-soil/15 rounded-lg px-4 py-3 text-[17px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine placeholder:text-soil/30';
