@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
+import { getConvParticipants } from '@/lib/participants';
+import { notifyNewMatch, notifyNewMessage } from '@/lib/email';
 
 // GET /api/conversations — list all conversations for current user
 export async function GET() {
@@ -67,21 +70,65 @@ export async function POST(req: NextRequest) {
   const ownerId = isOwner ? session.userId : toUserId;
   const runnerId = isOwner ? toUserId : session.userId;
 
-  // Upsert conversation
-  const [conv] = await sql`
-    INSERT INTO conversations (owner_id, runner_id)
-    VALUES (${ownerId}, ${runnerId})
-    ON CONFLICT (owner_id, runner_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
-    RETURNING id
+  // Find or create the conversation — track whether this is a brand-new match
+  const existing = await sql`
+    SELECT id FROM conversations WHERE owner_id = ${ownerId} AND runner_id = ${runnerId}
   `;
+  const isNewMatch = existing.length === 0;
+  const conv = isNewMatch
+    ? (
+        await sql`
+          INSERT INTO conversations (owner_id, runner_id)
+          VALUES (${ownerId}, ${runnerId})
+          RETURNING id
+        `
+      )[0]
+    : existing[0];
+
+  // Was the recipient already sitting on unread messages? (spam guard)
+  const uid = session.userId;
+  const [{ unread }] = (await sql`
+    SELECT COUNT(*)::int AS unread FROM messages
+    WHERE conversation_id = ${conv.id} AND sender_id = ${uid} AND read_at IS NULL
+  `) as [{ unread: number }];
 
   // Send opening message if provided
-  if (message?.trim()) {
+  const text = message?.trim();
+  if (text) {
     await sql`
       INSERT INTO messages (conversation_id, sender_id, content)
-      VALUES (${conv.id}, ${session.userId}, ${message.trim()})
+      VALUES (${conv.id}, ${uid}, ${text})
     `;
   }
 
-  return NextResponse.json({ conversationId: conv.id as string });
+  const conversationId = conv.id as string;
+
+  // Notify the other party after the response is sent
+  if (text) {
+    after(async () => {
+      const participants = await getConvParticipants(sql, conversationId);
+      const sides = participants?.bySide(uid);
+      if (!sides) return;
+      if (isNewMatch) {
+        await notifyNewMatch({
+          to: sides.other.email,
+          recipientName: sides.other.name,
+          senderName: sides.me.label,
+          message: text,
+          conversationId,
+        });
+      } else if (unread === 0) {
+        // Only email on the first unread message — not for every line of a chat
+        await notifyNewMessage({
+          to: sides.other.email,
+          recipientName: sides.other.name,
+          senderName: sides.me.label,
+          preview: text.slice(0, 200),
+          conversationId,
+        });
+      }
+    });
+  }
+
+  return NextResponse.json({ conversationId });
 }

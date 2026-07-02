@@ -84,6 +84,23 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS messages_conversation_id_idx ON messages(conversation_id)`;
   await sql`CREATE INDEX IF NOT EXISTS messages_sender_id_idx ON messages(sender_id)`;
 
+  // Booked runs: one party proposes a time + place, the other confirms
+  await sql`
+    CREATE TABLE IF NOT EXISTS runs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+      proposer_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      run_date DATE NOT NULL,
+      run_time TEXT NOT NULL,
+      location TEXT NOT NULL DEFAULT 'Castle Island, South Boston',
+      status TEXT NOT NULL DEFAULT 'proposed'
+        CHECK (status IN ('proposed', 'confirmed', 'declined', 'cancelled')),
+      created_at TIMESTAMPTZ DEFAULT now(),
+      responded_at TIMESTAMPTZ
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS runs_conversation_id_idx ON runs(conversation_id)`;
+
   console.log('Migrations complete.');
 }
 

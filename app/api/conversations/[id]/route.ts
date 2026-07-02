@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
+import { getConvParticipants } from '@/lib/participants';
+import { notifyNewMessage } from '@/lib/email';
 
 // GET /api/conversations/[id] — fetch thread + mark unread as read
 export async function GET(
@@ -53,7 +56,14 @@ export async function GET(
       AND read_at IS NULL
   `;
 
-  return NextResponse.json({ conversation: conv, messages: msgs });
+  // Runs planned in this conversation (newest first)
+  const runs = await sql`
+    SELECT * FROM runs
+    WHERE conversation_id = ${id}
+    ORDER BY created_at DESC
+  `;
+
+  return NextResponse.json({ conversation: conv, messages: msgs, runs });
 }
 
 // POST /api/conversations/[id] — send a message
@@ -84,11 +94,33 @@ export async function POST(
     return NextResponse.json({ error: 'content required' }, { status: 400 });
   }
 
+  // Spam guard: only email if the recipient has no other unread from me
+  const [{ unread }] = (await sql`
+    SELECT COUNT(*)::int AS unread FROM messages
+    WHERE conversation_id = ${id} AND sender_id = ${uid} AND read_at IS NULL
+  `) as [{ unread: number }];
+
+  const text = content.trim();
   const [msg] = await sql`
     INSERT INTO messages (conversation_id, sender_id, content)
-    VALUES (${id}, ${uid}, ${content.trim()})
+    VALUES (${id}, ${uid}, ${text})
     RETURNING *
   `;
+
+  if (unread === 0) {
+    after(async () => {
+      const participants = await getConvParticipants(sql, id);
+      const sides = participants?.bySide(uid);
+      if (!sides) return;
+      await notifyNewMessage({
+        to: sides.other.email,
+        recipientName: sides.other.name,
+        senderName: sides.me.label,
+        preview: text.slice(0, 200),
+        conversationId: id,
+      });
+    });
+  }
 
   return NextResponse.json({ message: msg });
 }

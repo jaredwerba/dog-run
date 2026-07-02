@@ -62,7 +62,7 @@ export default function ProfilePage() {
       });
   }, [id, router]);
 
-  async function startConversation(message: string) {
+  async function startConversation(message: string, run?: { date: string; time: string }) {
     setMessaging(true);
     try {
       const res = await fetch('/api/conversations', {
@@ -72,11 +72,28 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (data.conversationId) {
+        if (run) {
+          // Also file a real run proposal the other side can accept
+          await fetch('/api/runs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversationId: data.conversationId, date: run.date, time: run.time }),
+          });
+        }
         router.push(`/messages/${data.conversationId}`);
       }
     } finally {
       setMessaging(false);
     }
+  }
+
+  /* Next calendar date for a weekday key like 'tue' (skips today → next week) */
+  function nextDateFor(dayKey: string): string {
+    const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(dayKey);
+    const d = new Date();
+    const diff = (idx - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff);
+    return d.toISOString().slice(0, 10);
   }
 
   function handleSlotClick(day: string, time: string) {
@@ -192,7 +209,12 @@ export default function ProfilePage() {
                 </motion.button>
                 <motion.button
                   {...press}
-                  onClick={() => startConversation(msgText)}
+                  onClick={() =>
+                    startConversation(msgText, {
+                      date: nextDateFor(selectedSlot.day),
+                      time: selectedSlot.time,
+                    })
+                  }
                   disabled={messaging || !msgText.trim()}
                   className="flex-1 py-2.5 rounded-lg bg-pine hover:bg-pine-deep text-oat text-sm font-bold disabled:opacity-50 transition-colors"
                 >

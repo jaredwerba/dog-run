@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { motion } from 'motion/react';
-import { springBouncy, pressFirm } from '@/components/ux';
+import { motion, AnimatePresence } from 'motion/react';
+import { spring, springBouncy, press, pressFirm } from '@/components/ux';
+import { formatRunLabel } from '@/lib/ics';
 
 interface Message {
   id: string;
@@ -24,9 +25,237 @@ interface ConvRow {
   runner_photo: string | null;
 }
 
+interface Run {
+  id: string;
+  proposer_id: string;
+  run_date: string;
+  run_time: string;
+  location: string;
+  status: 'proposed' | 'confirmed' | 'declined' | 'cancelled';
+}
+
 interface ThreadData {
   conversation: ConvRow;
   messages: Message[];
+  runs: Run[];
+}
+
+const TIMES = [
+  '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '10:00', '11:00',
+  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '17:30', '18:00', '18:30',
+  '19:00', '20:00',
+];
+
+/* Pinned card: propose → accept → booked, with calendar invite */
+function RunPlanner({
+  conversationId,
+  myId,
+  otherName,
+  runs,
+  onChanged,
+}: {
+  conversationId: string;
+  myId: string;
+  otherName: string;
+  runs: Run[];
+  onChanged: () => Promise<void>;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('07:00');
+  const [location, setLocation] = useState('Castle Island, South Boston');
+
+  const active = runs.find(
+    (r) =>
+      r.status === 'proposed' ||
+      (r.status === 'confirmed' && String(r.run_date).slice(0, 10) >= today)
+  );
+
+  async function propose() {
+    if (!date || busy) return;
+    setBusy(true);
+    await fetch('/api/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, date, time, location }),
+    });
+    setShowForm(false);
+    setBusy(false);
+    await onChanged();
+  }
+
+  async function respond(runId: string, action: 'accept' | 'decline' | 'cancel') {
+    if (busy) return;
+    setBusy(true);
+    await fetch(`/api/runs/${runId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    setBusy(false);
+    await onChanged();
+  }
+
+  return (
+    <div className="px-4 pt-3">
+      <AnimatePresence mode="wait" initial={false}>
+        {active?.status === 'confirmed' ? (
+          <motion.div
+            key="confirmed"
+            initial={{ opacity: 0, y: -14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={spring}
+            className="bg-pine text-white rounded-xl p-4"
+          >
+            <p className="font-data text-[10px] tracking-[0.18em] text-tennis mb-1.5">RUN BOOKED ✓</p>
+            <p className="font-bold text-[16px]">
+              {formatRunLabel(String(active.run_date).slice(0, 10), active.run_time)}
+            </p>
+            <p className="text-white/70 text-[13px] mb-3">{active.location}</p>
+            <div className="flex items-center gap-3">
+              <a
+                href={`/api/runs/${active.id}/ics`}
+                className="bg-oat text-pine font-bold text-[13px] px-4 py-2 rounded-lg hover:bg-linen transition-colors"
+              >
+                Add to calendar
+              </a>
+              <button
+                onClick={() => respond(active.id, 'cancel')}
+                disabled={busy}
+                className="text-white/50 text-[12px] hover:text-white/80 transition-colors"
+              >
+                Cancel run
+              </button>
+            </div>
+            <p className="text-white/45 text-[11px] mt-2.5">Calendar invites emailed to both of you ✉️</p>
+          </motion.div>
+        ) : active?.status === 'proposed' && active.proposer_id === myId ? (
+          <motion.div
+            key="waiting"
+            initial={{ opacity: 0, y: -14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={spring}
+            className="bg-linen border border-soil/10 rounded-xl p-4"
+          >
+            <p className="font-data text-[10px] tracking-[0.18em] text-clay mb-1.5">RUN PROPOSED — WAITING ON {otherName.toUpperCase()}</p>
+            <p className="font-bold text-[15px] text-soil">
+              {formatRunLabel(String(active.run_date).slice(0, 10), active.run_time)}
+              <span className="font-normal text-soil/55"> · {active.location}</span>
+            </p>
+            <button
+              onClick={() => respond(active.id, 'cancel')}
+              disabled={busy}
+              className="text-clay-deep text-[12px] font-medium mt-2 hover:underline"
+            >
+              Cancel proposal
+            </button>
+          </motion.div>
+        ) : active?.status === 'proposed' ? (
+          <motion.div
+            key="respond"
+            initial={{ opacity: 0, y: -14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={spring}
+            className="bg-linen border border-soil/10 rounded-xl p-4"
+          >
+            <p className="font-data text-[10px] tracking-[0.18em] text-clay mb-1.5">{otherName.toUpperCase()} PROPOSED A RUN</p>
+            <p className="font-bold text-[15px] text-soil mb-3">
+              {formatRunLabel(String(active.run_date).slice(0, 10), active.run_time)}
+              <span className="font-normal text-soil/55"> · {active.location}</span>
+            </p>
+            <div className="flex gap-2">
+              <motion.button
+                {...press}
+                onClick={() => respond(active.id, 'accept')}
+                disabled={busy}
+                className="flex-1 bg-pine hover:bg-pine-deep text-oat font-bold text-[13px] py-2.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Book it 🐾
+              </motion.button>
+              <motion.button
+                {...press}
+                onClick={() => respond(active.id, 'decline')}
+                disabled={busy}
+                className="flex-1 border border-soil/15 text-soil/60 font-medium text-[13px] py-2.5 rounded-lg hover:bg-oat transition-colors disabled:opacity-50"
+              >
+                Can&apos;t make it
+              </motion.button>
+            </div>
+          </motion.div>
+        ) : showForm ? (
+          <motion.div
+            key="form"
+            initial={{ opacity: 0, y: -14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={spring}
+            className="bg-linen border border-soil/10 rounded-xl p-4 space-y-2.5"
+          >
+            <p className="font-data text-[10px] tracking-[0.18em] text-clay">PLAN A RUN WITH {otherName.toUpperCase()}</p>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                min={today}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="flex-1 border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
+              />
+              <select
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="border border-soil/15 rounded-lg px-2 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
+              >
+                {TIMES.map((t) => (
+                  <option key={t} value={t}>
+                    {formatRunLabel(today, t).split('· ')[1]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Where?"
+              className="w-full border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
+            />
+            <div className="flex gap-2">
+              <motion.button
+                {...press}
+                onClick={propose}
+                disabled={!date || busy}
+                className="flex-1 bg-pine hover:bg-pine-deep text-oat font-bold text-[13px] py-2.5 rounded-lg transition-colors disabled:opacity-40"
+              >
+                {busy ? 'Proposing…' : 'Propose run'}
+              </motion.button>
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-4 border border-soil/15 text-soil/60 text-[13px] rounded-lg hover:bg-oat transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.button
+            key="cta"
+            {...press}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowForm(true)}
+            className="w-full bg-linen border border-dashed border-pine/40 text-pine font-bold text-[13px] py-2.5 rounded-xl hover:bg-white transition-colors"
+          >
+            📅 Plan a run — pick a time &amp; place
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 export default function ThreadPage() {
@@ -102,6 +331,15 @@ export default function ThreadPage() {
         </div>
         <p className="text-sm font-bold text-soil truncate flex-1">{otherName}</p>
       </div>
+
+      {/* Run planner — propose, accept, booked */}
+      <RunPlanner
+        conversationId={conv.id}
+        myId={myId}
+        otherName={otherName}
+        runs={data.runs ?? []}
+        onChanged={load}
+      />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
