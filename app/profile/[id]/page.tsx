@@ -41,6 +41,13 @@ const SLOT_LABEL: Record<string, string> = {
   '18:00': '6pm', '19:00': '7pm', '20:00': '8pm',
 };
 
+const LOCATIONS = [
+  'Castle Island, South Boston',
+  'Charles River Esplanade',
+  'Boston Common & Public Garden',
+  'Jamaica Pond',
+];
+
 export default function ProfilePage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
@@ -49,7 +56,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [messaging, setMessaging] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ day: string; time: string } | null>(null);
+  const [location, setLocation] = useState(LOCATIONS[0]);
   const [msgText, setMsgText] = useState('');
+  const [msgEdited, setMsgEdited] = useState(false);
 
   useEffect(() => {
     fetch(`/api/profile/${id}`)
@@ -62,7 +71,7 @@ export default function ProfilePage() {
       });
   }, [id, router]);
 
-  async function startConversation(message: string, run?: { date: string; time: string }) {
+  async function startConversation(message: string, run?: { date: string; time: string; location: string }) {
     setMessaging(true);
     try {
       const res = await fetch('/api/conversations', {
@@ -77,7 +86,12 @@ export default function ProfilePage() {
           await fetch('/api/runs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ conversationId: data.conversationId, date: run.date, time: run.time }),
+            body: JSON.stringify({
+              conversationId: data.conversationId,
+              date: run.date,
+              time: run.time,
+              location: run.location,
+            }),
           });
         }
         router.push(`/messages/${data.conversationId}`);
@@ -96,11 +110,24 @@ export default function ProfilePage() {
     return d.toISOString().slice(0, 10);
   }
 
-  function handleSlotClick(day: string, time: string) {
+  function requestMessage(day: string, time: string, loc: string): string {
     const dayLabel = DAYS.find((d) => d.key === day)?.label ?? day;
     const timeLabel = SLOT_LABEL[time] ?? time;
+    return `Hi! I'd love to run at ${loc} on ${dayLabel} at ${timeLabel}. Would that work for you?`;
+  }
+
+  function handleSlotClick(day: string, time: string) {
     setSelectedSlot({ day, time });
-    setMsgText(`Hi! I'd love to run at Castle Island on ${dayLabel} at ${timeLabel}. Would that work for you?`);
+    setMsgEdited(false);
+    setMsgText(requestMessage(day, time, location));
+  }
+
+  function handleLocationChange(loc: string) {
+    setLocation(loc);
+    // Keep the drafted message in sync unless the user already edited it
+    if (selectedSlot && !msgEdited) {
+      setMsgText(requestMessage(selectedSlot.day, selectedSlot.time, loc));
+    }
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-soil/50 text-sm">Loading…</div>;
@@ -193,9 +220,28 @@ export default function ProfilePage() {
               <p className="text-sm font-bold text-soil">
                 Request a run on {DAYS.find((d) => d.key === selectedSlot.day)?.label} at {SLOT_LABEL[selectedSlot.time]}
               </p>
+              <div>
+                <p className="font-data text-[10px] tracking-[0.15em] text-soil/45 mb-1.5">WHERE</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {LOCATIONS.map((loc) => (
+                    <motion.button
+                      key={loc}
+                      {...pressFirm}
+                      onClick={() => handleLocationChange(loc)}
+                      className={`px-2.5 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${
+                        location === loc
+                          ? 'bg-pine text-oat'
+                          : 'bg-oat text-soil/60 border border-soil/10 hover:border-pine/40'
+                      }`}
+                    >
+                      {loc.split(',')[0]}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
               <textarea
                 value={msgText}
-                onChange={(e) => setMsgText(e.target.value)}
+                onChange={(e) => { setMsgText(e.target.value); setMsgEdited(true); }}
                 rows={3}
                 className="w-full border border-soil/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pine resize-none bg-white text-soil"
               />
@@ -213,6 +259,7 @@ export default function ProfilePage() {
                     startConversation(msgText, {
                       date: nextDateFor(selectedSlot.day),
                       time: selectedSlot.time,
+                      location,
                     })
                   }
                   disabled={messaging || !msgText.trim()}
@@ -229,7 +276,7 @@ export default function ProfilePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => startConversation(`Hi! I came across your profile on Go Dogs Boston and would love to connect about running at Castle Island together!`)}
+              onClick={() => startConversation(`Hi! I came across your profile on Go Dogs Boston and would love to plan a run together!`)}
               disabled={messaging}
               className="w-full bg-pine hover:bg-pine-deep text-oat font-bold py-3 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 text-[16px] transition-colors"
             >
