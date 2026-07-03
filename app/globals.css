@@ -55,3 +55,17 @@ button {
 .trail-sign {
   clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%);
 }
+
+/* Slowly spinning tennis ball next to the brand wordmark */
+@keyframes brand-ball-spin {
+  to { transform: rotate(360deg); }
+}
+.brand-ball-spin {
+  display: inline-block;
+  animation: brand-ball-spin 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-ball-spin {
+    animation: none;
+  }
+}
