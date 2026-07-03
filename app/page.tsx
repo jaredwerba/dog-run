@@ -10,6 +10,7 @@ const PollenField = dynamic(() => import('@/components/PollenField'), { ssr: fal
 const TennisBall3D = dynamic(() => import('@/components/TennisBall3D'), { ssr: false });
 const JoggerDoodle = dynamic(() => import('@/components/JoggerDoodle'), { ssr: false });
 const ScruffyDog = dynamic(() => import('@/components/ScruffyDog'), { ssr: false });
+const ChaseScene = dynamic(() => import('@/components/ChaseScene'), { ssr: false });
 
 /* ── Shared fade-up-on-scroll props ────────────────────── */
 const fadeUp = {
@@ -629,6 +630,9 @@ export default function Home() {
       <MotionConfig reducedMotion="user">
         <main className="min-h-screen bg-oat font-body text-soil">
           <ForestHero />
+
+          {/* ── Scroll-locked chase: dog vs. ball ────────── */}
+          <ChaseScene />
 
           {/* ── Under the canopy: phone demo ─────────────── */}
           <section className="relative bg-pine text-white px-6 py-20 sm:py-24 overflow-hidden">
