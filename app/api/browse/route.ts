@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { bostonWeekStart } from '@/lib/dogMiles';
+import { bostonToday, bostonWeekStart } from '@/lib/dogMiles';
 import { compactScheduleText, type Schedule } from '@/lib/schedule';
 
 /* Count of day+time slots both schedules share */
@@ -26,11 +26,17 @@ export async function GET(req: NextRequest) {
     const sql = db();
     const view = req.nextUrl.searchParams.get('view') === 'runners' ? 'runners' : 'dogs';
     const weekStart = bostonWeekStart();
+    const today = bostonToday();
 
     const rows =
       view === 'runners'
         ? await sql`
             SELECT r.runner_name, r.pace, r.typical_distance, r.photo_url,
+                   (
+                     SELECT COUNT(*)::int FROM runs rn
+                     JOIN conversations cn ON cn.id = rn.conversation_id
+                     WHERE cn.runner_id = u.id AND rn.status = 'confirmed' AND rn.run_date <= ${today}
+                   ) AS runs_completed,
                    (SELECT COUNT(*)::int FROM runner_reviews rr WHERE rr.runner_id = u.id) AS review_count
             FROM runner_profiles r
             JOIN users u ON u.id = r.user_id
@@ -45,6 +51,11 @@ export async function GET(req: NextRequest) {
                      JOIN conversations c ON c.id = r.conversation_id
                      WHERE c.owner_id = d.user_id AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
                    ) AS miles_this_week,
+                   (
+                     SELECT COUNT(*)::int FROM runs rn
+                     JOIN conversations cn ON cn.id = rn.conversation_id
+                     WHERE cn.owner_id = u.id AND rn.status = 'confirmed' AND rn.run_date <= ${today}
+                   ) AS runs_completed,
                    (SELECT COUNT(*)::int FROM dog_reviews dr WHERE dr.dog_owner_id = u.id) AS review_count
             FROM dog_profiles d
             JOIN users u ON u.id = d.user_id
@@ -64,6 +75,7 @@ export async function GET(req: NextRequest) {
   const sql = db();
   const uid = session.userId;
   const weekStart = bostonWeekStart();
+  const today = bostonToday();
 
   // My own profile — for match scoring, completeness nudges, and (owners) the ledger
   const myRows =
@@ -94,6 +106,11 @@ export async function GET(req: NextRequest) {
       ? await sql`
           SELECT u.id, u.created_at, r.runner_name, r.pace, r.typical_distance,
                  r.availability, r.photo_url, r.route, r.schedule,
+                   (
+                     SELECT COUNT(*)::int FROM runs rn
+                     JOIN conversations cn ON cn.id = rn.conversation_id
+                     WHERE cn.runner_id = u.id AND rn.status = 'confirmed' AND rn.run_date <= ${today}
+                   ) AS runs_completed,
                  (SELECT COUNT(*)::int FROM runner_reviews rr WHERE rr.runner_id = u.id) AS review_count
           FROM runner_profiles r
           JOIN users u ON u.id = r.user_id
@@ -108,6 +125,11 @@ export async function GET(req: NextRequest) {
                    JOIN conversations c ON c.id = r.conversation_id
                    WHERE c.owner_id = d.user_id AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
                  ) AS miles_this_week,
+                   (
+                     SELECT COUNT(*)::int FROM runs rn
+                     JOIN conversations cn ON cn.id = rn.conversation_id
+                     WHERE cn.owner_id = u.id AND rn.status = 'confirmed' AND rn.run_date <= ${today}
+                   ) AS runs_completed,
                  (SELECT COUNT(*)::int FROM dog_reviews dr WHERE dr.dog_owner_id = u.id) AS review_count
           FROM dog_profiles d
           JOIN users u ON u.id = d.user_id
@@ -124,6 +146,7 @@ export async function GET(req: NextRequest) {
         // `availability` is a legacy free-text column that's never populated —
         // derive a compact "when" summary from the actual schedule instead
         ...(session.role === 'owner' ? { availability: compactScheduleText(sched) } : {}),
+        days: sched ? Object.keys(sched).filter((d) => (sched[d] ?? []).length > 0) : [],
         overlap: scheduleOverlap(mySchedule, sched),
         pace_match: Boolean(myPace && p.pace === myPace),
       } as Record<string, unknown> & { overlap: number; pace_match: boolean };

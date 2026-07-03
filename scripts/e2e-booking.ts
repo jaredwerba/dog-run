@@ -101,6 +101,9 @@ async function main() {
   check('availability is compact (<40 chars)', (pat?.availability ?? '').length < 40, `"${pat?.availability}"`);
   check('overlap counts shared Sat 7am', pat?.overlap === 1, `overlap=${pat?.overlap}`);
 
+  check('runner card carries available days', Array.isArray(pat?.days) && pat.days.includes('sat'), JSON.stringify(pat?.days));
+  check('runner card carries runs_completed', typeof pat?.runs_completed === 'number', JSON.stringify(pat?.runs_completed));
+
   const browseRunner = await api(runnerCookie, '/api/browse');
   const rex = browseRunner.json?.profiles?.find((p: any) => p.dog_name === 'E2E-Rex');
   check('dog visible to runner with ledger fields', rex?.weekly_goal_miles === 30, JSON.stringify(rex?.weekly_goal_miles));
@@ -212,6 +215,8 @@ async function main() {
   const mine = await api(ownerCookie, '/api/runs/mine');
   check('runs/mine returns confirmed upcoming (auto-rebooked)', (mine.json?.upcoming?.length ?? 0) >= 1, JSON.stringify(mine.json?.upcoming?.length));
   check('runs/mine past run flagged as feedback-given', mine.json?.past?.[0]?.i_gave_feedback === true, JSON.stringify(mine.json?.past?.[0]?.i_gave_feedback));
+
+  check('runs/mine includes weather field (nullable)', 'weather' in (mine.json ?? {}), JSON.stringify(Object.keys(mine.json ?? {})));
 
   const upcomingId = mine.json?.upcoming?.[0]?.id;
   const icsRes = await fetch(`${BASE}/api/runs/${upcomingId}/ics`, { headers: { Cookie: ownerCookie } });

@@ -31,6 +31,27 @@ function icsStamp(d: Date): string {
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 }
 
+/* One-tap "Add to Google Calendar" URL — no file download needed */
+export function googleCalendarUrl(args: {
+  date: string;
+  time: string;
+  location: string;
+  title: string;
+  details?: string;
+  durationMinutes?: number;
+}): string {
+  const start = bostonToUtc(args.date, args.time);
+  const end = new Date(start.getTime() + (args.durationMinutes ?? 60) * 60_000);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: args.title,
+    dates: `${icsStamp(start)}/${icsStamp(end)}`,
+    location: args.location,
+    details: args.details ?? 'Booked on Go Dogs Boston — rundog.boston',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 function esc(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }

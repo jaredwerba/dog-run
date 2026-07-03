@@ -12,7 +12,15 @@ import { formatRunLabel } from '@/lib/ics';
 interface MatchInfo {
   overlap: number;
   pace_match: boolean;
+  runs_completed?: number;
+  days?: string[];
 }
+
+const DAY_CHIPS = [
+  { key: 'mon', label: 'Mon' }, { key: 'tue', label: 'Tue' }, { key: 'wed', label: 'Wed' },
+  { key: 'thu', label: 'Thu' }, { key: 'fri', label: 'Fri' }, { key: 'sat', label: 'Sat' },
+  { key: 'sun', label: 'Sun' },
+];
 
 interface DogProfile extends MatchInfo {
   id: string;
@@ -60,6 +68,7 @@ function runnerBadges(p: RunnerProfile): string[] {
 
 function matchBadges(p: MatchInfo): string[] {
   const badges: string[] = [];
+  if (p.runs_completed) badges.push(`${p.runs_completed} run${p.runs_completed === 1 ? '' : 's'} completed`);
   if (p.overlap > 0) badges.push(`${p.overlap} shared time${p.overlap === 1 ? '' : 's'}`);
   if (p.pace_match) badges.push('Same pace');
   return badges;
@@ -79,6 +88,7 @@ export default function BrowsePage() {
   const [viewing, setViewing] = useState<'runners' | 'dogs'>('runners');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [dayFilter, setDayFilter] = useState<string | null>(null);
   const [needsPhoto, setNeedsPhoto] = useState(false);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [shared, setShared] = useState(false);
@@ -184,9 +194,9 @@ export default function BrowsePage() {
     }
   }
 
-  const filtered = filter === 'all'
-    ? profiles
-    : profiles.filter((p) => p.pace === filter);
+  const filtered = profiles
+    .filter((p) => filter === 'all' || p.pace === filter)
+    .filter((p) => !dayFilter || (p.days ?? []).includes(dayFilter));
 
   return (
     <div className="min-h-screen bg-oat pt-16 pb-28 max-w-2xl mx-auto">
@@ -349,6 +359,26 @@ export default function BrowsePage() {
           ))}
         </div>
       </div>
+
+      {/* Day filter — "who's free on…" (schedules aren't public, so members only) */}
+      {!publicMode && (
+        <div className="px-4 mb-5 flex items-center gap-1.5 overflow-x-auto pb-1">
+          <span className="font-data text-[10px] tracking-[0.15em] text-soil/45 shrink-0 mr-1">FREE ON</span>
+          {DAY_CHIPS.map((d) => (
+            <button
+              key={d.key}
+              onClick={() => setDayFilter(dayFilter === d.key ? null : d.key)}
+              className={`shrink-0 px-2.5 py-1 rounded-md text-[12px] font-bold transition-colors ${
+                dayFilter === d.key
+                  ? 'bg-clay text-white'
+                  : 'bg-linen text-soil/55 border border-soil/10 hover:border-clay/40'
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loadError ? null : loading ? (
         <div className="flex items-center justify-center py-20 text-soil/50 text-sm">Loading…</div>

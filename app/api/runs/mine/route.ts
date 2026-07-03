@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { bostonToday } from '@/lib/dogMiles';
+import { getRunWeather } from '@/lib/weather';
 
 // GET /api/runs/mine — everything the dashboard needs in one shot
 export async function GET() {
@@ -47,5 +48,11 @@ export async function GET() {
     .filter((r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < today)
     .reverse();
 
-  return NextResponse.json({ today, upcoming, awaitingMe, awaitingThem, past });
+  // Forecast for the very next run (Open-Meteo, cached hourly)
+  const next = upcoming[0];
+  const weather = next
+    ? await getRunWeather(String(next.run_date).slice(0, 10), next.run_time as string)
+    : null;
+
+  return NextResponse.json({ today, upcoming, awaitingMe, awaitingThem, past, weather });
 }

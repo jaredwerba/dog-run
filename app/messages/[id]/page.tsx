@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { spring, springBouncy, press, pressFirm } from '@/components/ux';
-import { formatRunLabel } from '@/lib/ics';
+import { formatRunLabel, googleCalendarUrl } from '@/lib/ics';
 import { MILES_OPTIONS, defaultMilesFor } from '@/lib/dogMiles';
 import MatchCelebration from '@/components/MatchCelebration';
 
@@ -129,6 +129,10 @@ function RunPlanner({
   const lastCompleted = !active
     ? runs.find((r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < today)
     : undefined;
+  // No completed runs together yet → suggest a meet & greet on the first one
+  const firstRunTogether = !runs.some(
+    (r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < today
+  );
   const needsReport = Boolean(
     lastCompleted && !feedback.some((f) => f.run_id === lastCompleted.id && f.author_id === myId)
   );
@@ -224,12 +228,30 @@ function RunPlanner({
               {formatRunLabel(String(active.run_date).slice(0, 10), active.run_time)}
             </p>
             <p className="text-white/70 text-[13px] mb-3">{active.location}</p>
+            {firstRunTogether && (
+              <p className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-[12px] text-white/85 mb-3">
+                🤝 First run together — plan a short meet &amp; greet at the start. Owners often tag along for the first one.
+              </p>
+            )}
             <div className="flex items-center gap-3 flex-wrap">
               <a
                 href={`/api/runs/${active.id}/ics`}
                 className="bg-oat text-pine font-bold text-[13px] px-4 py-2 rounded-lg hover:bg-linen transition-colors"
               >
-                Add to calendar
+                Apple / .ics
+              </a>
+              <a
+                href={googleCalendarUrl({
+                  date: String(active.run_date).slice(0, 10),
+                  time: active.run_time,
+                  location: active.location,
+                  title: `Go Dogs Boston run with ${otherName}`,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border border-oat/40 text-oat font-bold text-[13px] px-4 py-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                Google Cal
               </a>
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(active.location)}`}
@@ -285,6 +307,11 @@ function RunPlanner({
               {formatRunLabel(String(active.run_date).slice(0, 10), active.run_time)}
               <span className="font-normal text-soil/55"> · {active.location}</span>
             </p>
+            {firstRunTogether && (
+              <p className="text-[12px] text-soil/55 mb-3">
+                🤝 This would be your first run together — meet a few minutes early to say hi.
+              </p>
+            )}
             <div className="flex gap-2">
               <motion.button
                 {...press}

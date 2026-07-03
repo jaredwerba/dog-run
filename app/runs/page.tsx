@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'motion/react';
 import { spring, press } from '@/components/ux';
-import { formatRunLabel } from '@/lib/ics';
+import { formatRunLabel, googleCalendarUrl } from '@/lib/ics';
 import { bostonWeekStart } from '@/lib/dogMiles';
 import JoggerDoodle from '@/components/JoggerDoodle';
 
@@ -26,12 +26,21 @@ interface Run {
   other_kind: 'runner' | 'dog';
 }
 
+interface Weather {
+  tempF: number;
+  precipChance: number;
+  summary: string;
+  emoji: string;
+  hotPaws: boolean;
+}
+
 interface Mine {
   today: string;
   upcoming: Run[];
   awaitingMe: Run[];
   awaitingThem: Run[];
   past: Run[];
+  weather: Weather | null;
 }
 
 const d10 = (d: string) => String(d).slice(0, 10);
@@ -163,13 +172,25 @@ export default function RunsPage() {
             <p className="font-display text-[26px] leading-tight mb-1">
               {formatRunLabel(d10(next.run_date), next.run_time)}
             </p>
-            <div className="flex items-center gap-2.5 mb-4">
+            <div className="flex items-center gap-2.5 mb-2">
               <Avatar run={next} size={34} />
               <p className="text-white/80 text-[14px]">
                 with <span className="font-bold text-white">{next.other_name}</span> · {next.location.split(',')[0]} ·{' '}
                 {next.miles} mi
               </p>
             </div>
+            {data.weather && (
+              <p className="text-white/70 text-[13px] mb-1">
+                {data.weather.emoji} {data.weather.summary}, {data.weather.tempF}°F
+                {data.weather.precipChance >= 30 ? ` · ${data.weather.precipChance}% rain` : ''}
+              </p>
+            )}
+            {data.weather?.hotPaws && (
+              <p className="bg-clay/30 border border-clay/50 rounded-lg px-3 py-1.5 text-[12px] text-white/90 mb-2">
+                🐾 Hot for paws — try the 7-second pavement test, stick to grass, bring water for two.
+              </p>
+            )}
+            <div className="mb-2" />
             <div className="flex flex-wrap gap-2">
               <a
                 href={mapsUrl(next.location)}
@@ -183,7 +204,20 @@ export default function RunsPage() {
                 href={`/api/runs/${next.id}/ics`}
                 className="border border-oat/40 text-oat font-bold text-[13px] px-4 py-2 rounded-lg hover:bg-white/10 transition-colors"
               >
-                Add to calendar
+                Apple / .ics
+              </a>
+              <a
+                href={googleCalendarUrl({
+                  date: d10(next.run_date),
+                  time: next.run_time,
+                  location: next.location,
+                  title: `Go Dogs Boston run with ${next.other_name}`,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border border-oat/40 text-oat font-bold text-[13px] px-4 py-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                Google Cal
               </a>
               <Link
                 href={`/messages/${next.conversation_id}`}
