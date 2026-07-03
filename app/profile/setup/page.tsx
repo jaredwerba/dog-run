@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { motion } from 'motion/react';
 import SchedulePicker, { type Schedule } from '@/components/SchedulePicker';
 import { press, pressFirm } from '@/components/ux';
+import { suggestedWeeklyMiles } from '@/lib/dogMiles';
 
 const BREEDS = [
   'Mixed breed', 'Labrador', 'Golden Retriever', 'French Bulldog', 'German Shepherd',
@@ -31,6 +32,13 @@ export default function ProfileSetupPage() {
   const [pace, setPace] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [quirks, setQuirks] = useState('');
+  const [weeklyGoal, setWeeklyGoal] = useState('');
+
+  function handleBreedChange(next: string) {
+    setBreed(next);
+    // Prefill the exercise goal from breed guidance unless the owner already set one
+    if (next && !weeklyGoal) setWeeklyGoal(String(suggestedWeeklyMiles(next)));
+  }
 
   const [runnerName, setRunnerName] = useState('');
   const [runnerPace, setRunnerPace] = useState('');
@@ -53,6 +61,7 @@ export default function ProfileSetupPage() {
           setPace(p.pace ?? '');
           setOwnerName(p.owner_name ?? '');
           setQuirks(p.quirks ?? '');
+          setWeeklyGoal(p.weekly_goal_miles ? String(p.weekly_goal_miles) : '');
         } else {
           setRunnerName(p.runner_name ?? '');
           setRunnerPace(p.pace ?? '');
@@ -79,7 +88,7 @@ export default function ProfileSetupPage() {
     try {
       const body =
         role === 'owner'
-          ? { dogName, breed, pace, ownerName, photoUrl, schedule, quirks }
+          ? { dogName, breed, pace, ownerName, photoUrl, schedule, quirks, weeklyGoalMiles: weeklyGoal }
           : { runnerName, pace: runnerPace, typicalDistance, photoUrl, schedule };
 
       const res = await fetch('/api/profile', {
@@ -132,10 +141,27 @@ export default function ProfileSetupPage() {
               <input value={dogName} onChange={(e) => setDogName(e.target.value)} className={inputCls} placeholder="e.g. Biscuit" />
             </Field>
             <Field label="Breed">
-              <select value={breed} onChange={(e) => setBreed(e.target.value)} className={inputCls}>
+              <select value={breed} onChange={(e) => handleBreedChange(e.target.value)} className={inputCls}>
                 <option value="">Select breed</option>
                 {BREEDS.map((b) => <option key={b}>{b}</option>)}
               </select>
+            </Field>
+            <Field label="Weekly exercise goal (miles)">
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={weeklyGoal}
+                onChange={(e) => setWeeklyGoal(e.target.value)}
+                className={inputCls}
+                placeholder="e.g. 25"
+              />
+              <p className="text-xs text-soil/45">
+                {breed
+                  ? `Suggested for a ${breed}: ~${suggestedWeeklyMiles(breed)} mi/week. `
+                  : ''}
+                Runners see how many miles your dog still needs each week.
+              </p>
             </Field>
             <Field label="Pace">
               <PacePicker value={pace} onChange={setPace} />

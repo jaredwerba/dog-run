@@ -40,10 +40,12 @@ export async function POST(req: NextRequest) {
   const scheduleJson = JSON.stringify(body.schedule ?? {});
 
   if (session.role === 'owner') {
-    const { dogName, breed, pace, ownerName, photoUrl, quirks } = body;
+    const { dogName, breed, pace, ownerName, photoUrl, quirks, weeklyGoalMiles } = body;
+    const goal = Number(weeklyGoalMiles);
+    const goalMiles = Number.isFinite(goal) && goal >= 1 && goal <= 100 ? Math.round(goal) : null;
     await sql`
-      INSERT INTO dog_profiles (user_id, dog_name, breed, pace, owner_name, owner_contact, photo_url, route, schedule, quirks)
-      VALUES (${session.userId}, ${dogName}, ${breed}, ${pace}, ${ownerName}, '', ${photoUrl ?? null}, 'castle-island', ${scheduleJson}::jsonb, ${quirks ?? ''})
+      INSERT INTO dog_profiles (user_id, dog_name, breed, pace, owner_name, owner_contact, photo_url, route, schedule, quirks, weekly_goal_miles)
+      VALUES (${session.userId}, ${dogName}, ${breed}, ${pace}, ${ownerName}, '', ${photoUrl ?? null}, 'castle-island', ${scheduleJson}::jsonb, ${quirks ?? ''}, ${goalMiles})
       ON CONFLICT (user_id) DO UPDATE SET
         dog_name = EXCLUDED.dog_name,
         breed = EXCLUDED.breed,
@@ -51,7 +53,8 @@ export async function POST(req: NextRequest) {
         owner_name = EXCLUDED.owner_name,
         photo_url = EXCLUDED.photo_url,
         schedule = EXCLUDED.schedule,
-        quirks = EXCLUDED.quirks
+        quirks = EXCLUDED.quirks,
+        weekly_goal_miles = EXCLUDED.weekly_goal_miles
     `;
   } else {
     const { runnerName, pace, typicalDistance, photoUrl } = body;

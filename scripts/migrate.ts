@@ -106,6 +106,12 @@ async function migrate() {
   await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS followup_sent_at TIMESTAMPTZ`;
   await sql`ALTER TABLE dog_profiles ADD COLUMN IF NOT EXISTS quirks TEXT DEFAULT ''`;
 
+  // Mileage ledger: weekly exercise goals + distance per run + post-run reports
+  await sql`ALTER TABLE dog_profiles ADD COLUMN IF NOT EXISTS weekly_goal_miles INTEGER`;
+  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS miles NUMERIC(4,1) NOT NULL DEFAULT 3.0`;
+  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS report_note TEXT`;
+  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS reported_at TIMESTAMPTZ`;
+
   console.log('Migrations complete.');
 }
 

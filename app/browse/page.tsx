@@ -19,6 +19,14 @@ interface DogProfile extends MatchInfo {
   pace: string;
   owner_name: string;
   photo_url?: string | null;
+  weekly_goal_miles?: number | null;
+  miles_this_week?: number;
+}
+
+function ledgerBadge(p: DogProfile): string | null {
+  if (!p.weekly_goal_miles) return null;
+  const remaining = Math.round((p.weekly_goal_miles - (p.miles_this_week ?? 0)) * 10) / 10;
+  return remaining > 0 ? `Needs ${remaining} mi this week` : 'Weekly goal met 🎾';
 }
 
 interface RunnerProfile extends MatchInfo {
@@ -54,6 +62,7 @@ export default function BrowsePage() {
   const [needsPhoto, setNeedsPhoto] = useState(false);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [shared, setShared] = useState(false);
+  const [myLedger, setMyLedger] = useState<{ dogName: string; goal: number; miles: number } | null>(null);
 
   useEffect(() => {
     fetch('/api/me')
@@ -69,6 +78,9 @@ export default function BrowsePage() {
         setProfiles(d.profiles);
         setViewing(d.viewing);
         setNeedsPhoto(Boolean(d.me?.hasProfile) && !d.me?.hasPhoto);
+        if (d.me?.weeklyGoalMiles && d.me?.dogName) {
+          setMyLedger({ dogName: d.me.dogName, goal: d.me.weeklyGoalMiles, miles: d.me.milesThisWeek ?? 0 });
+        }
         setLoading(false);
       });
   }, [router]);
@@ -106,6 +118,36 @@ export default function BrowsePage() {
             : 'Runners who love running with dogs'}
         </p>
       </div>
+
+      {/* My dog's weekly ledger (owners) */}
+      {myLedger && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring}
+          className="mx-4 mb-4 bg-linen border border-soil/10 rounded-xl px-4 py-3"
+        >
+          <div className="flex items-baseline justify-between mb-1.5">
+            <p className="text-[13px] font-bold text-soil">{myLedger.dogName}&apos;s week</p>
+            <p className="font-data text-[11px] text-soil/55">
+              {Math.round(myLedger.miles * 10) / 10} / {myLedger.goal} MI
+            </p>
+          </div>
+          <div className="h-2 bg-oat rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, (myLedger.miles / myLedger.goal) * 100)}%` }}
+              transition={{ ...spring, delay: 0.2 }}
+              className={`h-full rounded-full ${myLedger.miles >= myLedger.goal ? 'bg-tennis' : 'bg-fern'}`}
+            />
+          </div>
+          {myLedger.miles < myLedger.goal && (
+            <p className="text-[12px] text-soil/50 mt-1.5">
+              {Math.round((myLedger.goal - myLedger.miles) * 10) / 10} miles to go — book a runner below.
+            </p>
+          )}
+        </motion.div>
+      )}
 
       {/* Profile-completeness nudge */}
       {needsPhoto && !nudgeDismissed && (
@@ -200,7 +242,7 @@ export default function BrowsePage() {
                   subtitle={p.breed}
                   tags={[{ label: 'Pace', value: PACE_LABELS[p.pace] ?? p.pace }]}
                   viewing="dogs"
-                  badges={matchBadges(p)}
+                  badges={[...(ledgerBadge(p) ? [ledgerBadge(p)!] : []), ...matchBadges(p)]}
                 />
               ) : (
                 <ProfileCard

@@ -20,6 +20,8 @@ interface Profile {
   route: string;
   schedule?: Schedule | null;
   quirks?: string | null;
+  weekly_goal_miles?: number | null;
+  miles_this_week?: number;
 }
 
 const PACE_LABEL: Record<string, string> = {
@@ -160,6 +162,44 @@ export default function ProfilePage() {
       </div>
 
       <div className="px-5 py-5 max-w-sm mx-auto space-y-4">
+        {/* Weekly mileage ledger */}
+        {type === 'dog' && profile.weekly_goal_miles ? (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="bg-linen rounded-xl border border-soil/10 px-4 py-3"
+          >
+            <div className="flex items-baseline justify-between mb-1.5">
+              <p className="font-data text-[10px] tracking-[0.15em] text-clay">THIS WEEK&apos;S MILES</p>
+              <p className="font-data text-[11px] text-soil/55">
+                {Math.round((profile.miles_this_week ?? 0) * 10) / 10} / {profile.weekly_goal_miles} MI
+              </p>
+            </div>
+            <div className="h-2 bg-oat rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{
+                  width: `${Math.min(100, ((profile.miles_this_week ?? 0) / profile.weekly_goal_miles) * 100)}%`,
+                }}
+                transition={{ ...spring, delay: 0.2 }}
+                className={`h-full rounded-full ${
+                  (profile.miles_this_week ?? 0) >= profile.weekly_goal_miles ? 'bg-tennis' : 'bg-fern'
+                }`}
+              />
+            </div>
+            {(profile.miles_this_week ?? 0) < profile.weekly_goal_miles && (
+              <p className="text-[12px] text-soil/55 mt-1.5">
+                {name} needs{' '}
+                <span className="font-bold text-soil/75">
+                  {Math.round((profile.weekly_goal_miles - (profile.miles_this_week ?? 0)) * 10) / 10} more miles
+                </span>{' '}
+                this week — that&apos;s where you come in.
+              </p>
+            )}
+          </motion.div>
+        ) : null}
+
         {/* Details */}
         <div className="bg-linen rounded-xl border border-soil/10 divide-y divide-soil/10">
           <Row icon="🗺️" label="Route" value="Castle Island, South Boston" />

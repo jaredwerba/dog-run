@@ -17,9 +17,10 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { action } = await req.json();
-  if (!['accept', 'decline', 'cancel'].includes(action)) {
-    return NextResponse.json({ error: 'action must be accept, decline, or cancel' }, { status: 400 });
+  const body = await req.json();
+  const action = body.action as string;
+  if (!['accept', 'decline', 'cancel', 'report'].includes(action)) {
+    return NextResponse.json({ error: 'action must be accept, decline, cancel, or report' }, { status: 400 });
   }
 
   const uid = session.userId;
@@ -37,6 +38,31 @@ export async function POST(
   const run = runRows[0];
   const conversationId = run.conversation_id as string;
   const isProposer = run.proposer_id === uid;
+
+  // ── Post-run report: log actual miles + a note, fills the mileage ledger ──
+  if (action === 'report') {
+    if (run.status !== 'confirmed') {
+      return NextResponse.json({ error: 'Only confirmed runs can be reported' }, { status: 400 });
+    }
+    const parsedMiles = Number(body.miles);
+    if (!Number.isFinite(parsedMiles) || parsedMiles < 0 || parsedMiles > 30) {
+      return NextResponse.json({ error: 'miles must be between 0 and 30' }, { status: 400 });
+    }
+    const reportMiles = Math.round(parsedMiles * 10) / 10;
+    const note = String(body.note ?? '').trim().slice(0, 500);
+    const [updated] = await sql`
+      UPDATE runs
+      SET miles = ${reportMiles}, report_note = ${note || null}, reported_at = now()
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    const chatNote = `🏁 Logged the run — ${reportMiles} mi${note ? `. ${note}` : ''}`;
+    await sql`
+      INSERT INTO messages (conversation_id, sender_id, content)
+      VALUES (${conversationId}, ${uid}, ${chatNote})
+    `;
+    return NextResponse.json({ run: updated });
+  }
 
   if (action === 'cancel') {
     if (!isProposer && run.status === 'proposed') {

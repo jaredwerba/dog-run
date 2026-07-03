@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
+import { bostonWeekStart } from '@/lib/dogMiles';
 
 export async function GET(
   _req: NextRequest,
@@ -27,8 +28,14 @@ export async function GET(
     if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ profile: rows[0], type: 'runner' });
   } else {
+    const weekStart = bostonWeekStart();
     const rows = await sql`
-      SELECT u.id, u.username, d.*
+      SELECT u.id, u.username, d.*,
+        (
+          SELECT COALESCE(SUM(r.miles), 0)::float FROM runs r
+          JOIN conversations c ON c.id = r.conversation_id
+          WHERE c.owner_id = d.user_id AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
+        ) AS miles_this_week
       FROM dog_profiles d
       JOIN users u ON u.id = d.user_id
       WHERE u.id = ${id}

@@ -5,6 +5,7 @@ import { getSession } from '@/lib/session';
 import { getConvParticipants } from '@/lib/participants';
 import { notifyRunProposed } from '@/lib/email';
 import { formatRunLabel } from '@/lib/ics';
+import { defaultMilesFor } from '@/lib/dogMiles';
 
 // POST /api/runs — propose a run in a conversation
 export async function POST(req: NextRequest) {
@@ -13,10 +14,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { conversationId, date, time, location } = await req.json();
+  const { conversationId, date, time, location, miles } = await req.json();
   if (!conversationId || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? '') || !/^\d{2}:\d{2}$/.test(time ?? '')) {
     return NextResponse.json({ error: 'conversationId, date (YYYY-MM-DD) and time (HH:MM) required' }, { status: 400 });
   }
+  const parsedMiles = Number(miles);
+  const runMiles =
+    Number.isFinite(parsedMiles) && parsedMiles >= 0.5 && parsedMiles <= 30
+      ? Math.round(parsedMiles * 10) / 10
+      : null;
 
   const uid = session.userId;
   const sql = db();
@@ -39,8 +45,8 @@ export async function POST(req: NextRequest) {
   `;
 
   const [run] = await sql`
-    INSERT INTO runs (conversation_id, proposer_id, run_date, run_time, location)
-    VALUES (${conversationId}, ${uid}, ${date}, ${time}, ${loc})
+    INSERT INTO runs (conversation_id, proposer_id, run_date, run_time, location, miles)
+    VALUES (${conversationId}, ${uid}, ${date}, ${time}, ${loc}, ${runMiles ?? defaultMilesFor(loc)})
     RETURNING *
   `;
 

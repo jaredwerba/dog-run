@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { spring, springBouncy, press, pressFirm } from '@/components/ux';
 import { formatRunLabel } from '@/lib/ics';
+import { MILES_OPTIONS, defaultMilesFor } from '@/lib/dogMiles';
 
 interface Message {
   id: string;
@@ -31,6 +32,8 @@ interface Run {
   run_date: string;
   run_time: string;
   location: string;
+  miles: number;
+  reported_at: string | null;
   status: 'proposed' | 'confirmed' | 'declined' | 'cancelled';
 }
 
@@ -66,6 +69,9 @@ function RunPlanner({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('07:00');
   const [location, setLocation] = useState('Castle Island, South Boston');
+  const [miles, setMiles] = useState<number>(defaultMilesFor('Castle Island, South Boston'));
+  const [reportMiles, setReportMiles] = useState('');
+  const [reportNote, setReportNote] = useState('');
 
   const active = runs.find(
     (r) =>
@@ -73,18 +79,19 @@ function RunPlanner({
       (r.status === 'confirmed' && String(r.run_date).slice(0, 10) >= today)
   );
 
-  // Most recent completed run — powers "book the same run next week"
+  // Most recent completed run — powers the post-run report + "book it again"
   const lastCompleted = !active
     ? runs.find((r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < today)
     : undefined;
+  const needsReport = Boolean(lastCompleted && !lastCompleted.reported_at);
 
-  async function proposeRun(d: string, t: string, loc: string) {
+  async function proposeRun(d: string, t: string, loc: string, mi: number) {
     if (!d || busy) return;
     setBusy(true);
     await fetch('/api/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, date: d, time: t, location: loc }),
+      body: JSON.stringify({ conversationId, date: d, time: t, location: loc, miles: mi }),
     });
     setShowForm(false);
     setBusy(false);
@@ -96,7 +103,12 @@ function RunPlanner({
     // Same weekday/time/place, first occurrence after today
     const next = new Date(`${String(lastCompleted.run_date).slice(0, 10)}T12:00:00`);
     while (next.toISOString().slice(0, 10) <= today) next.setDate(next.getDate() + 7);
-    void proposeRun(next.toISOString().slice(0, 10), lastCompleted.run_time, lastCompleted.location);
+    void proposeRun(
+      next.toISOString().slice(0, 10),
+      lastCompleted.run_time,
+      lastCompleted.location,
+      Number(lastCompleted.miles) || defaultMilesFor(lastCompleted.location)
+    );
   }
 
   async function respond(runId: string, action: 'accept' | 'decline' | 'cancel') {
@@ -107,6 +119,22 @@ function RunPlanner({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     });
+    setBusy(false);
+    await onChanged();
+  }
+
+  async function submitReport() {
+    if (!lastCompleted || busy) return;
+    const mi = Number(reportMiles || lastCompleted.miles);
+    if (!Number.isFinite(mi)) return;
+    setBusy(true);
+    await fetch(`/api/runs/${lastCompleted.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'report', miles: mi, note: reportNote }),
+    });
+    setReportNote('');
+    setReportMiles('');
     setBusy(false);
     await onChanged();
   }
@@ -240,14 +268,36 @@ function RunPlanner({
             </div>
             <input
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                setMiles(defaultMilesFor(e.target.value));
+              }}
               placeholder="Where?"
               className="w-full border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
             />
+            <div>
+              <p className="font-data text-[10px] tracking-[0.15em] text-soil/45 mb-1.5">DISTANCE</p>
+              <div className="flex flex-wrap gap-1.5">
+                {MILES_OPTIONS.map((m) => (
+                  <motion.button
+                    key={m}
+                    {...pressFirm}
+                    onClick={() => setMiles(m)}
+                    className={`px-2.5 py-1 rounded-md text-[12px] font-bold transition-colors ${
+                      miles === m
+                        ? 'bg-pine text-oat'
+                        : 'bg-oat text-soil/60 border border-soil/10 hover:border-pine/40'
+                    }`}
+                  >
+                    {m} mi
+                  </motion.button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-2">
               <motion.button
                 {...press}
-                onClick={() => void proposeRun(date, time, location)}
+                onClick={() => void proposeRun(date, time, location, miles)}
                 disabled={!date || busy}
                 className="flex-1 bg-pine hover:bg-pine-deep text-oat font-bold text-[13px] py-2.5 rounded-lg transition-colors disabled:opacity-40"
               >
@@ -269,7 +319,40 @@ function RunPlanner({
             exit={{ opacity: 0 }}
             className="space-y-2"
           >
-            {lastCompleted && (
+            {needsReport && lastCompleted ? (
+              <div className="bg-linen border border-soil/10 rounded-xl p-4 space-y-2.5">
+                <p className="font-data text-[10px] tracking-[0.18em] text-clay">
+                  HOW&apos;D THE RUN GO? — {formatRunLabel(String(lastCompleted.run_date).slice(0, 10), lastCompleted.run_time)}
+                </p>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    step={0.1}
+                    value={reportMiles}
+                    onChange={(e) => setReportMiles(e.target.value)}
+                    placeholder={String(lastCompleted.miles)}
+                    className="w-24 border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
+                  />
+                  <span className="text-[13px] text-soil/55">miles actually run</span>
+                </div>
+                <input
+                  value={reportNote}
+                  onChange={(e) => setReportNote(e.target.value)}
+                  placeholder="How was it? e.g. Tank crushed it, zero pulling"
+                  className="w-full border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
+                />
+                <motion.button
+                  {...press}
+                  onClick={() => void submitReport()}
+                  disabled={busy}
+                  className="w-full bg-pine hover:bg-pine-deep text-oat font-bold text-[13px] py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {busy ? 'Logging…' : '🏁 Log the run'}
+                </motion.button>
+              </div>
+            ) : lastCompleted ? (
               <motion.button
                 {...press}
                 onClick={rebook}
@@ -280,7 +363,7 @@ function RunPlanner({
                   ? 'Booking…'
                   : `🔁 Book the same run next week — ${formatRunLabel(String(lastCompleted.run_date).slice(0, 10), lastCompleted.run_time).split(' · ')[1]} at ${lastCompleted.location.split(',')[0]}`}
               </motion.button>
-            )}
+            ) : null}
             <motion.button
               {...press}
               onClick={() => setShowForm(true)}
@@ -354,6 +437,13 @@ export default function ThreadPage() {
   const otherPhoto = isOwner ? conv.runner_photo : conv.owner_photo;
   const otherEmoji = isOwner ? '🏃' : '🐶';
 
+  // Trust ledger: completed runs between this pair
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const runsTogether = (data.runs ?? []).filter(
+    (r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < todayStr
+  );
+  const milesTogether = Math.round(runsTogether.reduce((sum, r) => sum + (Number(r.miles) || 0), 0) * 10) / 10;
+
   return (
     <div className="min-h-screen bg-oat flex flex-col pt-12">
       {/* Header */}
@@ -366,7 +456,14 @@ export default function ThreadPage() {
             <span className="text-lg">{otherEmoji}</span>
           )}
         </div>
-        <p className="text-sm font-bold text-soil truncate flex-1">{otherName}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-soil truncate">{otherName}</p>
+          {runsTogether.length > 0 && (
+            <p className="font-data text-[10px] tracking-[0.12em] text-pine">
+              🐾 {runsTogether.length} RUN{runsTogether.length === 1 ? '' : 'S'} TOGETHER · {milesTogether} MI
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Run planner — propose, accept, booked */}
