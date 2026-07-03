@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -51,6 +51,15 @@ const LOCATIONS = [
   'Jamaica Pond',
 ];
 
+interface Review {
+  comment: string;
+  created_at: string;
+  owner_name?: string | null;
+  dog_name?: string | null;
+  runs_together: number;
+  mine: boolean;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
@@ -62,17 +71,44 @@ export default function ProfilePage() {
   const [location, setLocation] = useState(LOCATIONS[0]);
   const [msgText, setMsgText] = useState('');
   const [msgEdited, setMsgEdited] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [mySchedule, setMySchedule] = useState<Schedule | null>(null);
+  const [canReview, setCanReview] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState('');
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [savingReview, setSavingReview] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetch(`/api/profile/${id}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) { router.push('/browse'); return; }
         setProfile(d.profile);
         setType(d.type);
+        setReviews(d.reviews ?? []);
+        setCanReview(Boolean(d.canReview));
+        setReviewDraft(d.myReview ?? '');
+        setMySchedule(d.mySchedule ?? null);
         setLoading(false);
       });
   }, [id, router]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function saveReview() {
+    if (savingReview) return;
+    setSavingReview(true);
+    await fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ runnerId: id, comment: reviewDraft }),
+    });
+    setSavingReview(false);
+    setReviewOpen(false);
+    load();
+  }
 
   async function startConversation(message: string, run?: { date: string; time: string; location: string }) {
     setMessaging(true);
@@ -226,20 +262,25 @@ export default function ProfilePage() {
                   >
                     <span className="font-data w-8 text-[10px] uppercase font-semibold text-soil/50 shrink-0">{day.label}</span>
                     <div className="flex gap-1.5 flex-wrap">
-                      {slots.map((slot) => (
-                        <motion.button
-                          key={slot}
-                          {...pressFirm}
-                          onClick={() => handleSlotClick(day.key, slot)}
-                          className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
-                            selectedSlot?.day === day.key && selectedSlot?.time === slot
-                              ? 'bg-pine text-oat'
-                              : 'bg-pine/10 text-pine hover:bg-pine hover:text-oat'
-                          }`}
-                        >
-                          {SLOT_LABEL[slot] ?? slot}
-                        </motion.button>
-                      ))}
+                      {slots.map((slot) => {
+                        const shared = Boolean(mySchedule?.[day.key]?.includes(slot));
+                        return (
+                          <motion.button
+                            key={slot}
+                            {...pressFirm}
+                            onClick={() => handleSlotClick(day.key, slot)}
+                            title={shared ? 'You both have this time free' : undefined}
+                            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
+                              selectedSlot?.day === day.key && selectedSlot?.time === slot
+                                ? 'bg-pine text-oat'
+                                : 'bg-pine/10 text-pine hover:bg-pine hover:text-oat'
+                            } ${shared ? 'ring-2 ring-tennis' : ''}`}
+                          >
+                            {SLOT_LABEL[slot] ?? slot}
+                            {shared ? ' ✦' : ''}
+                          </motion.button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -328,6 +369,66 @@ export default function ProfilePage() {
             </motion.button>
           )}
         </AnimatePresence>
+
+        {/* What owners say — comments, never scores */}
+        {type === 'runner' && (reviews.length > 0 || canReview) && (
+          <div className="space-y-2 pt-2">
+            <h2 className="font-data text-[11px] tracking-[0.18em] text-clay">WHAT OWNERS SAY</h2>
+            {reviews.map((rv) => (
+              <figure key={`${rv.owner_name}-${rv.created_at}`} className="bg-linen rounded-xl border border-soil/10 p-4">
+                <blockquote className="text-[14px] text-soil/80 leading-relaxed">“{rv.comment}”</blockquote>
+                <figcaption className="text-[12px] text-soil/50 mt-2">
+                  <span className="font-bold text-soil/70">
+                    {rv.owner_name ?? 'An owner'}
+                    {rv.dog_name ? ` — ${rv.dog_name}'s owner` : ''}
+                  </span>
+                  {rv.runs_together > 0 && <> · {rv.runs_together} run{rv.runs_together === 1 ? '' : 's'} together</>}
+                  {rv.mine && <span className="text-clay"> · yours</span>}
+                </figcaption>
+              </figure>
+            ))}
+            {canReview && !reviewOpen && (
+              <button
+                onClick={() => setReviewOpen(true)}
+                className="w-full bg-linen border border-dashed border-pine/40 text-pine font-bold text-[13px] py-2.5 rounded-xl hover:bg-white transition-colors"
+              >
+                {reviewDraft ? 'Edit your comment' : `💬 Leave a comment about ${name}`}
+              </button>
+            )}
+            {reviewOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={spring}
+                className="bg-linen border border-soil/10 rounded-xl p-4 space-y-2.5"
+              >
+                <textarea
+                  value={reviewDraft}
+                  onChange={(e) => setReviewDraft(e.target.value)}
+                  rows={3}
+                  placeholder={`How was running with ${name}? Other owners will read this.`}
+                  className="w-full border border-soil/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pine resize-none bg-white text-soil"
+                />
+                <div className="flex gap-2">
+                  <motion.button
+                    {...press}
+                    onClick={saveReview}
+                    disabled={savingReview}
+                    className="flex-1 bg-pine hover:bg-pine-deep text-oat text-sm font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {savingReview ? 'Saving…' : 'Post comment'}
+                  </motion.button>
+                  <button
+                    onClick={() => setReviewOpen(false)}
+                    className="px-4 border border-soil/15 text-soil/60 text-sm rounded-lg hover:bg-oat transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        )}
 
         <Link href="/browse" className="block text-center text-sm text-pine font-bold py-1 hover:underline">
           ← Back to browse

@@ -19,8 +19,8 @@ export async function POST(
   const { id } = await params;
   const body = await req.json();
   const action = body.action as string;
-  if (!['accept', 'decline', 'cancel', 'report'].includes(action)) {
-    return NextResponse.json({ error: 'action must be accept, decline, cancel, or report' }, { status: 400 });
+  if (!['accept', 'decline', 'cancel', 'report', 'feedback'].includes(action)) {
+    return NextResponse.json({ error: 'unknown action' }, { status: 400 });
   }
 
   const uid = session.userId;
@@ -38,6 +38,60 @@ export async function POST(
   const run = runRows[0];
   const conversationId = run.conversation_id as string;
   const isProposer = run.proposer_id === uid;
+
+  // ── Two-sided post-run feedback: comment + optional miles/review/rebook ──
+  if (action === 'feedback') {
+    if (run.status !== 'confirmed') {
+      return NextResponse.json({ error: 'Only confirmed runs can get feedback' }, { status: 400 });
+    }
+    const role = run.owner_id === uid ? 'owner' : 'runner';
+    const comment = String(body.comment ?? '').trim().slice(0, 500);
+    const wantsRebook = Boolean(body.wantsRebook);
+    const shareAsReview = role === 'owner' && Boolean(body.shareAsReview) && comment.length > 0;
+
+    let milesActual: number | null = null;
+    if (role === 'runner' && body.milesActual !== undefined && body.milesActual !== '') {
+      const m = Number(body.milesActual);
+      if (!Number.isFinite(m) || m < 0 || m > 30) {
+        return NextResponse.json({ error: 'miles must be between 0 and 30' }, { status: 400 });
+      }
+      milesActual = Math.round(m * 10) / 10;
+    }
+
+    await sql`
+      INSERT INTO run_feedback (run_id, author_id, role, comment, wants_rebook, miles_actual, share_as_review)
+      VALUES (${id}, ${uid}, ${role}, ${comment}, ${wantsRebook}, ${milesActual}, ${shareAsReview})
+      ON CONFLICT (run_id, author_id) DO UPDATE SET
+        comment = EXCLUDED.comment,
+        wants_rebook = EXCLUDED.wants_rebook,
+        miles_actual = EXCLUDED.miles_actual,
+        share_as_review = EXCLUDED.share_as_review,
+        created_at = now()
+    `;
+
+    // Runner's actual miles keep the ledger honest
+    if (milesActual !== null) {
+      await sql`UPDATE runs SET miles = ${milesActual}, reported_at = now() WHERE id = ${id}`;
+    }
+
+    // Owner can publish their comment on the runner's profile
+    if (shareAsReview) {
+      await sql`
+        INSERT INTO runner_reviews (runner_id, author_id, comment)
+        VALUES (${run.runner_id}, ${uid}, ${comment})
+        ON CONFLICT (runner_id, author_id) DO UPDATE SET
+          comment = EXCLUDED.comment, created_at = now()
+      `;
+    }
+
+    const chatNote = `🏁 ${comment ? `"${comment}"` : 'Logged the run'}${milesActual !== null ? ` — ${milesActual} mi` : ''}${wantsRebook ? ' · up for the same time next week 🔁' : ''}`;
+    await sql`
+      INSERT INTO messages (conversation_id, sender_id, content)
+      VALUES (${conversationId}, ${uid}, ${chatNote})
+    `;
+
+    return NextResponse.json({ ok: true, wantsRebook });
+  }
 
   // ── Post-run report: log actual miles + a note, fills the mileage ledger ──
   if (action === 'report') {

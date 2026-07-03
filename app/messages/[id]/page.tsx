@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { spring, springBouncy, press, pressFirm } from '@/components/ux';
 import { formatRunLabel } from '@/lib/ics';
 import { MILES_OPTIONS, defaultMilesFor } from '@/lib/dogMiles';
+import MatchCelebration from '@/components/MatchCelebration';
 
 interface Message {
   id: string;
@@ -16,6 +17,8 @@ interface Message {
   read_at: string | null;
 }
 
+type Schedule = Record<string, string[]>;
+
 interface ConvRow {
   id: string;
   owner_id: string;
@@ -24,6 +27,31 @@ interface ConvRow {
   owner_photo: string | null;
   runner_name: string;
   runner_photo: string | null;
+  owner_schedule?: Schedule | null;
+  runner_schedule?: Schedule | null;
+}
+
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const DAY_LABEL: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+
+/* Next 3 day+time slots both schedules share, soonest first */
+function sharedSlots(a?: Schedule | null, b?: Schedule | null): { day: string; time: string; date: string }[] {
+  if (!a || !b) return [];
+  const now = new Date();
+  const out: { day: string; time: string; date: string; dist: number }[] = [];
+  for (const day of Object.keys(a)) {
+    const theirs = new Set(b[day] ?? []);
+    for (const time of a[day] ?? []) {
+      if (!theirs.has(time)) continue;
+      const idx = DAY_KEYS.indexOf(day);
+      if (idx < 0) continue;
+      const dist = (idx - now.getDay() + 7) % 7 || 7;
+      const d = new Date(now);
+      d.setDate(d.getDate() + dist);
+      out.push({ day, time, date: d.toISOString().slice(0, 10), dist });
+    }
+  }
+  return out.sort((x, y) => x.dist - y.dist || x.time.localeCompare(y.time)).slice(0, 3);
 }
 
 interface Run {
@@ -37,10 +65,17 @@ interface Run {
   status: 'proposed' | 'confirmed' | 'declined' | 'cancelled';
 }
 
+interface Feedback {
+  run_id: string;
+  author_id: string;
+  wants_rebook: boolean;
+}
+
 interface ThreadData {
   conversation: ConvRow;
   messages: Message[];
   runs: Run[];
+  feedback: Feedback[];
 }
 
 const TIMES = [
@@ -53,14 +88,20 @@ const TIMES = [
 function RunPlanner({
   conversationId,
   myId,
+  isOwner,
   otherName,
   runs,
+  feedback,
+  suggestions,
   onChanged,
 }: {
   conversationId: string;
   myId: string;
+  isOwner: boolean;
   otherName: string;
   runs: Run[];
+  feedback: Feedback[];
+  suggestions: { day: string; time: string; date: string }[];
   onChanged: () => Promise<void>;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -72,6 +113,8 @@ function RunPlanner({
   const [miles, setMiles] = useState<number>(defaultMilesFor('Castle Island, South Boston'));
   const [reportMiles, setReportMiles] = useState('');
   const [reportNote, setReportNote] = useState('');
+  const [wantRebook, setWantRebook] = useState(true);
+  const [shareReview, setShareReview] = useState(true);
 
   const active = runs.find(
     (r) =>
@@ -83,7 +126,9 @@ function RunPlanner({
   const lastCompleted = !active
     ? runs.find((r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < today)
     : undefined;
-  const needsReport = Boolean(lastCompleted && !lastCompleted.reported_at);
+  const needsReport = Boolean(
+    lastCompleted && !feedback.some((f) => f.run_id === lastCompleted.id && f.author_id === myId)
+  );
 
   async function proposeRun(d: string, t: string, loc: string, mi: number) {
     if (!d || busy) return;
@@ -125,14 +170,34 @@ function RunPlanner({
 
   async function submitReport() {
     if (!lastCompleted || busy) return;
-    const mi = Number(reportMiles || lastCompleted.miles);
-    if (!Number.isFinite(mi)) return;
     setBusy(true);
     await fetch(`/api/runs/${lastCompleted.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'report', miles: mi, note: reportNote }),
+      body: JSON.stringify({
+        action: 'feedback',
+        comment: reportNote,
+        wantsRebook: wantRebook,
+        milesActual: isOwner ? undefined : (reportMiles || lastCompleted.miles),
+        shareAsReview: isOwner ? shareReview : undefined,
+      }),
     });
+    if (wantRebook) {
+      // Same run, same time, next week — the rebook machinery
+      const next = new Date(`${String(lastCompleted.run_date).slice(0, 10)}T12:00:00`);
+      while (next.toISOString().slice(0, 10) <= today) next.setDate(next.getDate() + 7);
+      await fetch('/api/runs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId,
+          date: next.toISOString().slice(0, 10),
+          time: lastCompleted.run_time,
+          location: lastCompleted.location,
+          miles: Number(lastCompleted.miles) || undefined,
+        }),
+      });
+    }
     setReportNote('');
     setReportMiles('');
     setBusy(false);
@@ -324,25 +389,51 @@ function RunPlanner({
                 <p className="font-data text-[10px] tracking-[0.18em] text-clay">
                   HOW&apos;D THE RUN GO? — {formatRunLabel(String(lastCompleted.run_date).slice(0, 10), lastCompleted.run_time)}
                 </p>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    step={0.1}
-                    value={reportMiles}
-                    onChange={(e) => setReportMiles(e.target.value)}
-                    placeholder={String(lastCompleted.miles)}
-                    className="w-24 border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
-                  />
-                  <span className="text-[13px] text-soil/55">miles actually run</span>
-                </div>
+                {!isOwner && (
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number"
+                      min={0}
+                      max={30}
+                      step={0.1}
+                      value={reportMiles}
+                      onChange={(e) => setReportMiles(e.target.value)}
+                      placeholder={String(lastCompleted.miles)}
+                      className="w-24 border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
+                    />
+                    <span className="text-[13px] text-soil/55">miles actually run</span>
+                  </div>
+                )}
                 <input
                   value={reportNote}
                   onChange={(e) => setReportNote(e.target.value)}
-                  placeholder="How was it? e.g. Tank crushed it, zero pulling"
+                  placeholder={isOwner ? `How was ${otherName} with your dog?` : 'How was it? e.g. Tank crushed it, zero pulling'}
                   className="w-full border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
                 />
+                <button
+                  onClick={() => setWantRebook(!wantRebook)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors ${
+                    wantRebook ? 'border-pine bg-pine/10 text-pine' : 'border-soil/15 text-soil/55'
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${wantRebook ? 'border-pine bg-pine' : 'border-soil/30'}`}>
+                    {wantRebook && <span className="text-oat text-[9px] leading-none">✓</span>}
+                  </span>
+                  🔁 Book the same run next week
+                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => setShareReview(!shareReview)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors ${
+                      shareReview ? 'border-pine bg-pine/10 text-pine' : 'border-soil/15 text-soil/55'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${shareReview ? 'border-pine bg-pine' : 'border-soil/30'}`}>
+                      {shareReview && <span className="text-oat text-[9px] leading-none">✓</span>}
+                    </span>
+                    💬 Share my comment on {otherName}&apos;s profile
+                  </button>
+                )}
                 <motion.button
                   {...press}
                   onClick={() => void submitReport()}
@@ -364,6 +455,29 @@ function RunPlanner({
                   : `🔁 Book the same run next week — ${formatRunLabel(String(lastCompleted.run_date).slice(0, 10), lastCompleted.run_time).split(' · ')[1]} at ${lastCompleted.location.split(',')[0]}`}
               </motion.button>
             ) : null}
+            {suggestions.length > 0 && (
+              <div className="bg-linen border border-soil/10 rounded-xl p-3">
+                <p className="font-data text-[10px] tracking-[0.15em] text-clay mb-2">
+                  YOU BOTH HAVE TIME —
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestions.map((s) => (
+                    <motion.button
+                      key={`${s.day}-${s.time}`}
+                      {...pressFirm}
+                      onClick={() => {
+                        setDate(s.date);
+                        setTime(s.time);
+                        setShowForm(true);
+                      }}
+                      className="bg-pine/10 text-pine font-bold text-[12px] px-3 py-1.5 rounded-md hover:bg-pine hover:text-oat transition-colors"
+                    >
+                      {DAY_LABEL[s.day]} {formatRunLabel(s.date, s.time).split('· ')[1]}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
             <motion.button
               {...press}
               onClick={() => setShowForm(true)}
@@ -385,8 +499,27 @@ export default function ThreadPage() {
   const [myId, setMyId] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // The match moment: first time this browser sees a run confirmed, celebrate.
+  // Works for both sides — accepter via reload after tapping accept, proposer
+  // via the 3s poll picking up the status change.
+  useEffect(() => {
+    if (!data?.runs) return;
+    const today = new Date().toISOString().slice(0, 10);
+    for (const r of data.runs) {
+      if (r.status === 'confirmed' && String(r.run_date).slice(0, 10) >= today) {
+        const key = `gdb-match-seen-${r.id}`;
+        if (!localStorage.getItem(key)) {
+          localStorage.setItem(key, '1');
+          setCelebrate(true);
+          break;
+        }
+      }
+    }
+  }, [data]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/conversations/${id}`);
@@ -446,6 +579,8 @@ export default function ThreadPage() {
 
   return (
     <div className="min-h-screen bg-oat flex flex-col pt-12">
+      <MatchCelebration show={celebrate} onDone={() => setCelebrate(false)} />
+
       {/* Header */}
       <div className="bg-linen border-b border-soil/10 px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.push('/messages')} className="text-pine font-bold text-sm hover:underline pr-1">←</button>
@@ -470,8 +605,11 @@ export default function ThreadPage() {
       <RunPlanner
         conversationId={conv.id}
         myId={myId}
+        isOwner={isOwner}
         otherName={otherName}
         runs={data.runs ?? []}
+        feedback={data.feedback ?? []}
+        suggestions={sharedSlots(conv.owner_schedule, conv.runner_schedule)}
         onChanged={load}
       />
 

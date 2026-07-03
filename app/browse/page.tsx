@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'motion/react';
 import ProfileCard from '@/components/ProfileCard';
 import JoggerDoodle from '@/components/JoggerDoodle';
 import { spring } from '@/components/ux';
+import { formatRunLabel } from '@/lib/ics';
 
 interface MatchInfo {
   overlap: number;
@@ -36,6 +38,15 @@ interface RunnerProfile extends MatchInfo {
   typical_distance: string;
   availability: string;
   photo_url?: string | null;
+  review_count?: number;
+}
+
+function runnerBadges(p: RunnerProfile): string[] {
+  const badges = matchBadges(p);
+  if (p.review_count) {
+    badges.push(`${p.review_count} owner comment${p.review_count === 1 ? '' : 's'}`);
+  }
+  return badges;
 }
 
 function matchBadges(p: MatchInfo): string[] {
@@ -63,6 +74,7 @@ export default function BrowsePage() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [shared, setShared] = useState(false);
   const [myLedger, setMyLedger] = useState<{ dogName: string; goal: number; miles: number } | null>(null);
+  const [nextRun, setNextRun] = useState<{ label: string; location: string } | null>(null);
   // Logged-out guests can browse both sides; clicking a profile funnels to signup
   const [publicMode, setPublicMode] = useState(false);
   const [publicView, setPublicView] = useState<'dogs' | 'runners'>('dogs');
@@ -102,6 +114,19 @@ export default function BrowsePage() {
         if (d.me?.weeklyGoalMiles && d.me?.dogName) {
           setMyLedger({ dogName: d.me.dogName, goal: d.me.weeklyGoalMiles, miles: d.me.milesThisWeek ?? 0 });
         }
+        // Surface the next booked run everywhere
+        fetch('/api/runs/mine')
+          .then((r) => r.json())
+          .then((mine) => {
+            const next = mine?.upcoming?.[0];
+            if (next && !cancelled) {
+              setNextRun({
+                label: formatRunLabel(String(next.run_date).slice(0, 10), next.run_time),
+                location: String(next.location).split(',')[0],
+              });
+            }
+          })
+          .catch(() => {});
       }
       setLoading(false);
     }
@@ -192,6 +217,24 @@ export default function BrowsePage() {
             Try again
           </button>
         </div>
+      )}
+
+      {/* Next booked run — always in sight */}
+      {nextRun && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="mx-4 mb-4">
+          <Link
+            href="/runs"
+            className="flex items-center gap-2.5 bg-pine text-white rounded-xl px-4 py-2.5 hover:bg-pine-deep transition-colors"
+          >
+            <span aria-hidden>🎾</span>
+            <span className="text-[13px] flex-1">
+              <span className="font-data text-[10px] tracking-[0.15em] text-tennis mr-2">NEXT RUN</span>
+              <span className="font-bold">{nextRun.label}</span>
+              <span className="text-white/70"> · {nextRun.location}</span>
+            </span>
+            <span className="text-white/60" aria-hidden>→</span>
+          </Link>
+        </motion.div>
       )}
 
       {/* My dog's weekly ledger (owners) */}
@@ -342,7 +385,7 @@ export default function BrowsePage() {
                     { label: 'When', value: (p as RunnerProfile).availability },
                   ]}
                   viewing="runners"
-                  badges={matchBadges(p as RunnerProfile)}
+                  badges={runnerBadges(p as RunnerProfile)}
                   href={publicMode ? `/register?meet=${encodeURIComponent((p as RunnerProfile).runner_name)}&side=runners` : undefined}
                 />
               )}

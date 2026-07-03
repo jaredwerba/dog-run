@@ -56,14 +56,20 @@ export async function GET(
       AND read_at IS NULL
   `;
 
-  // Runs planned in this conversation (newest first)
+  // Runs planned in this conversation (newest first) + who gave feedback
   const runs = await sql`
     SELECT * FROM runs
     WHERE conversation_id = ${id}
     ORDER BY created_at DESC
   `;
+  const feedback = await sql`
+    SELECT f.run_id, f.author_id, f.wants_rebook
+    FROM run_feedback f
+    JOIN runs r ON r.id = f.run_id
+    WHERE r.conversation_id = ${id}
+  `;
 
-  return NextResponse.json({ conversation: conv, messages: msgs, runs });
+  return NextResponse.json({ conversation: conv, messages: msgs, runs, feedback });
 }
 
 // POST /api/conversations/[id] — send a message

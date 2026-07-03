@@ -51,7 +51,11 @@ export default function LoginPage() {
       const completeData = await completeRes.json();
       if (!completeRes.ok) throw new Error(completeData.error);
 
-      router.push('/browse');
+      // Land on the runs dashboard when something's on the calendar
+      const mine = await fetch('/api/runs/mine').then((r) => r.json()).catch(() => null);
+      const hasRuns =
+        (mine?.upcoming?.length ?? 0) + (mine?.awaitingMe?.length ?? 0) + (mine?.awaitingThem?.length ?? 0) > 0;
+      router.push(hasRuns ? '/runs' : '/browse');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong';
       setError(msg.includes('cancelled') || msg.includes('AbortError') ? 'Passkey cancelled.' : msg);

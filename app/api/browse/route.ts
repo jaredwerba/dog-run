@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
     const rows =
       view === 'runners'
         ? await sql`
-            SELECT r.runner_name, r.pace, r.typical_distance, r.photo_url
+            SELECT r.runner_name, r.pace, r.typical_distance, r.photo_url,
+                   (SELECT COUNT(*)::int FROM runner_reviews rr WHERE rr.runner_id = u.id) AS review_count
             FROM runner_profiles r
             JOIN users u ON u.id = r.user_id
             WHERE r.route = 'castle-island'
@@ -92,7 +93,8 @@ export async function GET(req: NextRequest) {
     session.role === 'owner'
       ? await sql`
           SELECT u.id, u.created_at, r.runner_name, r.pace, r.typical_distance,
-                 r.availability, r.photo_url, r.route, r.schedule
+                 r.availability, r.photo_url, r.route, r.schedule,
+                 (SELECT COUNT(*)::int FROM runner_reviews rr WHERE rr.runner_id = u.id) AS review_count
           FROM runner_profiles r
           JOIN users u ON u.id = r.user_id
           WHERE r.route = 'castle-island'

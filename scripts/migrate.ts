@@ -112,6 +112,36 @@ async function migrate() {
   await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS report_note TEXT`;
   await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS reported_at TIMESTAMPTZ`;
 
+  // Two-sided post-run feedback
+  await sql`
+    CREATE TABLE IF NOT EXISTS run_feedback (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      run_id UUID REFERENCES runs(id) ON DELETE CASCADE,
+      author_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('owner', 'runner')),
+      comment TEXT DEFAULT '',
+      wants_rebook BOOLEAN DEFAULT false,
+      miles_actual NUMERIC(4,1),
+      share_as_review BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(run_id, author_id)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS run_feedback_run_id_idx ON run_feedback(run_id)`;
+
+  // Runner reviews — owner comments, no scores
+  await sql`
+    CREATE TABLE IF NOT EXISTS runner_reviews (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      runner_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      author_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      comment TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(runner_id, author_id)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS runner_reviews_runner_id_idx ON runner_reviews(runner_id)`;
+
   console.log('Migrations complete.');
 }
 

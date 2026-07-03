@@ -15,6 +15,13 @@ export async function GET(
   const { id } = await params;
   const sql = db();
 
+  // Viewer's own schedule — for shared-slot highlights
+  const mineRows =
+    session.role === 'owner'
+      ? await sql`SELECT schedule FROM dog_profiles WHERE user_id = ${session.userId}`
+      : await sql`SELECT schedule FROM runner_profiles WHERE user_id = ${session.userId}`;
+  const mySchedule = mineRows[0]?.schedule ?? null;
+
   // Determine which profile type to fetch based on session role
   // Owner (looking at runners) → fetch runner profile
   // Runner (looking at dog owners) → fetch dog profile
@@ -26,7 +33,43 @@ export async function GET(
       WHERE u.id = ${id}
     `;
     if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json({ profile: rows[0], type: 'runner' });
+
+    const uid = session.userId;
+    // Owner comments — with author name, dog, and runs-together count
+    const reviews = await sql`
+      SELECT rr.comment, rr.created_at, rr.author_id,
+             dp.owner_name, dp.dog_name,
+             (
+               SELECT COUNT(*) FROM runs r2
+               JOIN conversations c2 ON c2.id = r2.conversation_id
+               WHERE c2.runner_id = ${id} AND c2.owner_id = rr.author_id
+                 AND r2.status = 'confirmed' AND r2.run_date <= now()::date
+             )::int AS runs_together
+      FROM runner_reviews rr
+      LEFT JOIN dog_profiles dp ON dp.user_id = rr.author_id
+      WHERE rr.runner_id = ${id}
+      ORDER BY rr.created_at DESC
+      LIMIT 30
+    `;
+    const canReview = (
+      await sql`
+        SELECT 1 FROM runs r3
+        JOIN conversations c3 ON c3.id = r3.conversation_id
+        WHERE c3.owner_id = ${uid} AND c3.runner_id = ${id}
+          AND r3.status = 'confirmed' AND r3.run_date <= now()::date
+        LIMIT 1
+      `
+    ).length > 0;
+    const myReview = reviews.find((rv) => rv.author_id === uid)?.comment ?? '';
+
+    return NextResponse.json({
+      profile: rows[0],
+      type: 'runner',
+      reviews: reviews.map(({ author_id, ...rest }) => ({ ...rest, mine: author_id === uid })),
+      canReview,
+      myReview,
+      mySchedule,
+    });
   } else {
     const weekStart = bostonWeekStart();
     const rows = await sql`
@@ -41,6 +84,6 @@ export async function GET(
       WHERE u.id = ${id}
     `;
     if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json({ profile: rows[0], type: 'dog' });
+    return NextResponse.json({ profile: rows[0], type: 'dog', mySchedule });
   }
 }

@@ -9,6 +9,7 @@ import { ReactLenis } from 'lenis/react';
 const PollenField = dynamic(() => import('@/components/PollenField'), { ssr: false });
 const TennisBall3D = dynamic(() => import('@/components/TennisBall3D'), { ssr: false });
 const JoggerDoodle = dynamic(() => import('@/components/JoggerDoodle'), { ssr: false });
+const ScruffyDog = dynamic(() => import('@/components/ScruffyDog'), { ssr: false });
 
 /* ── Shared fade-up-on-scroll props ────────────────────── */
 const fadeUp = {
@@ -171,6 +172,8 @@ function ForestHero() {
           hill="M0 240 L0 180 Q360 158 720 176 T1440 168 L1440 240 Z"
           className="h-full"
         />
+        {/* the welcome committee */}
+        <ScruffyDog className="absolute bottom-[2px] left-[5%] w-[110px] sm:w-[150px]" />
       </motion.div>
 
       {/* sunlit pollen — three.js */}
