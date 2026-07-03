@@ -39,7 +39,7 @@ export default function NavBar() {
   return (
     <nav className="glass-nav fixed top-0 inset-x-0 z-50 px-4 h-12 flex items-center justify-between">
       <Link href={user ? '/browse' : '/'} className="text-[17px] font-semibold tracking-tight text-white">
-        Go Dogs Boston
+        Go Dogs Boston 🎾
       </Link>
 
       {user ? (

@@ -19,9 +19,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Go Dogs Boston — Runners and high-energy dogs, matched",
+  title: "Go Dogs Boston 🎾 — Runners and high-energy dogs, matched",
   description:
-    "Go Dogs Boston matches local runners with high-energy dogs and their owners. Runners get a training partner. Dogs get their miles.",
+    "Go Dogs Boston 🎾 matches local runners with high-energy dogs and their owners. Runners get a training partner. Dogs get their miles.",
 };
 
 export default function RootLayout({

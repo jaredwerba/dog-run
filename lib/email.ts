@@ -89,7 +89,7 @@ export async function notifyNewMatch(args: {
     subject: `${args.senderName} wants to run with you`,
     heading: 'You have a new match 🐾',
     bodyHtml: `<p>Hi ${args.recipientName},</p>
-      <p><strong>${args.senderName}</strong> just reached out on Go Dogs Boston:</p>
+      <p><strong>${args.senderName}</strong> just reached out on Go Dogs Boston 🎾:</p>
       <p style="background:#f6eedd;border-left:3px solid #bd6b44;padding:10px 14px;border-radius:6px;">&ldquo;${args.message}&rdquo;</p>`,
     cta: { label: 'Reply now', url: threadUrl(args.conversationId) },
   });

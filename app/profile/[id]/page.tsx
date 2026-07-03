@@ -109,7 +109,7 @@ export default function ProfilePage() {
   async function shareProfile() {
     const url = `${window.location.origin}/p/${id}`;
     if (navigator.share) {
-      try { await navigator.share({ title: 'Go Dogs Boston', url }); return; } catch { /* cancelled */ }
+      try { await navigator.share({ title: 'Go Dogs Boston 🎾', url }); return; } catch { /* cancelled */ }
     }
     await navigator.clipboard.writeText(url);
     setShareCopied(true);
@@ -462,7 +462,7 @@ export default function ProfilePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => startConversation(`Hi! I came across your profile on Go Dogs Boston and would love to plan a run together!`)}
+              onClick={() => startConversation(`Hi! I came across your profile on Go Dogs Boston 🎾 and would love to plan a run together!`)}
               disabled={messaging}
               className="w-full bg-pine hover:bg-pine-deep text-oat font-bold py-3 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 text-[16px] transition-colors"
             >

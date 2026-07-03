@@ -2,10 +2,10 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Go Dogs Boston',
-    short_name: 'Go Dogs',
+    name: 'Go Dogs Boston 🎾',
+    short_name: 'Go Dogs 🎾',
     description:
-      'Go Dogs Boston matches local runners with high-energy dogs and their owners.',
+      'Go Dogs Boston 🎾 matches local runners with high-energy dogs and their owners.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f6eedd',

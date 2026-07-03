@@ -53,7 +53,7 @@ export default function PublicProfilePage() {
     return (
       <div className="min-h-screen bg-oat pt-16 flex flex-col items-center justify-center px-6 text-center">
         <p className="font-display text-[22px] text-soil/70 mb-2">Couldn&apos;t find that profile</p>
-        <Link href="/browse" className="text-pine font-bold text-sm hover:underline">Browse Go Dogs Boston →</Link>
+        <Link href="/browse" className="text-pine font-bold text-sm hover:underline">Browse Go Dogs Boston 🎾 →</Link>
       </div>
     );
   }
@@ -141,7 +141,7 @@ export default function PublicProfilePage() {
 
         <div className="bg-pine text-white rounded-xl p-5 text-center">
           <p className="font-display text-[18px] mb-1">Want to run with {name}?</p>
-          <p className="text-[13px] text-white/70 mb-3">Join Go Dogs Boston — free, Boston only.</p>
+          <p className="text-[13px] text-white/70 mb-3">Join Go Dogs Boston 🎾 — free, Boston only.</p>
           <button
             onClick={() => router.push(`/register?meet=${encodeURIComponent(name)}`)}
             className="bg-tennis text-soil font-bold text-[14px] px-6 py-2.5 rounded-lg hover:bg-oat transition-colors"

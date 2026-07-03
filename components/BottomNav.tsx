@@ -35,7 +35,21 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-linen border-t border-soil/10 pb-[env(safe-area-inset-bottom)]">
-      <div className="max-w-sm mx-auto grid grid-cols-3 items-end px-6 py-2">
+      <div className="max-w-sm mx-auto grid grid-cols-4 items-end px-4 py-2">
+        {/* Browse — discover dogs (runners) or runners (owners) */}
+        <Link
+          href="/browse"
+          className={`relative flex flex-col items-center gap-0.5 py-1 transition-colors ${
+            isActive('/browse') ? 'text-pine' : 'text-soil/45 hover:text-soil/70'
+          }`}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="M20 20 L15.2 15.2" />
+          </svg>
+          <span className="text-[10px] font-medium">Browse</span>
+        </Link>
+
         {/* Calendar — left */}
         <Link
           href="/runs"

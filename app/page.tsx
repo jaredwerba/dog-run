@@ -206,7 +206,7 @@ function ForestHero() {
           transition={{ duration: 0.7, delay: 0.2 }}
           className="text-[16px] sm:text-[18px] leading-relaxed text-bark max-w-xl mx-auto mb-10"
         >
-          Go Dogs Boston matches runners with high-energy dogs and their owners.
+          Go Dogs Boston 🎾 matches runners with high-energy dogs and their owners.
           Runners get a partner who never cancels. Dogs get sunshine, trails,
           and the miles they were born for.
         </motion.p>
@@ -623,10 +623,10 @@ const TRUST = [
 ];
 
 const ROUTES = [
-  { name: 'Castle Island Loop', dist: '2.2 MI', surface: 'Paved', note: 'Ocean breeze, fort views', favorite: true },
-  { name: 'Charles River Esplanade', dist: '3–17 MI', surface: 'Paved', note: 'Fountains and shade the whole way', favorite: false },
-  { name: 'Boston Common & Garden', dist: '1.5 MI', surface: 'Mixed', note: 'Quick downtown lunch-break loops', favorite: false },
-  { name: 'Jamaica Pond', dist: '1.5 MI', surface: 'Soft path', note: 'Gentle on joints, good for easy days', favorite: false },
+  { name: 'Castle Island Loop', href: '/routes/castle-island', dist: '2.2 MI', surface: 'Paved', note: 'Ocean breeze, fort views', favorite: true },
+  { name: 'Charles River Esplanade', href: '/routes/charles-river', dist: '3–17 MI', surface: 'Paved', note: 'Fountains and shade the whole way', favorite: false },
+  { name: 'Boston Common & Garden', href: '/routes/boston-common', dist: '1.5 MI', surface: 'Mixed', note: 'Quick downtown lunch-break loops', favorite: false },
+  { name: 'Jamaica Pond', href: '/routes/jamaica-pond', dist: '1.5 MI', surface: 'Soft path', note: 'Gentle on joints, good for easy days', favorite: false },
 ];
 
 /* ── Page ──────────────────────────────────────────────── */
@@ -913,7 +913,9 @@ export default function Home() {
                         {ROUTES.map((route) => (
                           <tr key={route.name} className="border-b border-white/10 last:border-0">
                             <td className="px-5 py-4 font-bold text-[15px] whitespace-nowrap">
-                              {route.name}
+                              <Link href={route.href} className="hover:text-tennis transition-colors underline decoration-white/20 underline-offset-4 hover:decoration-tennis">
+                                {route.name}
+                              </Link>
                               {route.favorite && (
                                 <span className="ml-2 align-middle" title="Pack favorite">
                                   <TennisBall size={14} />
@@ -971,10 +973,7 @@ export default function Home() {
             <div className="max-w-4xl mx-auto">
               <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-14">
                 <div className="lg:col-span-2">
-                  <p className="font-display text-[24px] mb-3">
-                    Go Dogs Boston
-                    <TennisBall size={11} className="ml-1.5 -translate-y-0.5" />
-                  </p>
+                  <p className="font-display text-[24px] mb-3">Go Dogs Boston 🎾</p>
                   <p className="text-white/50 text-[14px] leading-relaxed max-w-xs">
                     Matching Boston runners with high-energy dogs and the owners
                     who love them.
@@ -982,17 +981,40 @@ export default function Home() {
                 </div>
 
                 {[
-                  { heading: 'PRODUCT', links: ['How it works', 'Browse dogs', 'Browse runners', 'Safety'] },
-                  { heading: 'ROUTES', links: ['Castle Island', 'Charles River', 'Boston Common', 'Jamaica Pond'] },
-                  { heading: 'COMPANY', links: ['About', 'Blog', 'Contact', 'Careers'] },
+                  {
+                    heading: 'PRODUCT',
+                    links: [
+                      { label: 'How it works', href: '/register' },
+                      { label: 'Browse dogs', href: '/register' },
+                      { label: 'Browse runners', href: '/register' },
+                      { label: 'Safety', href: '/register' },
+                    ],
+                  },
+                  {
+                    heading: 'ROUTES',
+                    links: [
+                      { label: 'Castle Island', href: '/routes/castle-island' },
+                      { label: 'Charles River', href: '/routes/charles-river' },
+                      { label: 'Boston Common', href: '/routes/boston-common' },
+                      { label: 'Jamaica Pond', href: '/routes/jamaica-pond' },
+                    ],
+                  },
+                  {
+                    heading: 'COMPANY',
+                    links: [
+                      { label: 'About', href: '/about' },
+                      { label: 'Contact', href: '/contact' },
+                      { label: 'Careers', href: '/careers' },
+                    ],
+                  },
                 ].map((col) => (
                   <div key={col.heading}>
                     <p className="font-data text-[11px] tracking-[0.2em] text-white/35 mb-4">{col.heading}</p>
                     <ul className="space-y-2.5">
                       {col.links.map((link) => (
-                        <li key={link}>
-                          <Link href="/register" className="text-[14px] text-white/65 hover:text-tennis transition-colors">
-                            {link}
+                        <li key={link.label}>
+                          <Link href={link.href} className="text-[14px] text-white/65 hover:text-tennis transition-colors">
+                            {link.label}
                           </Link>
                         </li>
                       ))}
@@ -1002,7 +1024,7 @@ export default function Home() {
               </div>
 
               <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="font-data text-[12px] text-white/35">MADE IN BOSTON · © 2026 GO DOGS BOSTON</p>
+                <p className="font-data text-[12px] text-white/35">MADE IN BOSTON · © 2026 GO DOGS BOSTON 🎾</p>
                 <div className="flex gap-5 font-data text-[12px] text-white/35">
                   <Link href="/register" className="hover:text-white/70 transition-colors">TERMS</Link>
                   <Link href="/register" className="hover:text-white/70 transition-colors">PRIVACY</Link>

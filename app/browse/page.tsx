@@ -181,7 +181,7 @@ export default function BrowsePage() {
 
   async function share() {
     const data = {
-      title: 'Go Dogs Boston',
+      title: 'Go Dogs Boston 🎾',
       text: 'Boston runners + high-energy dogs, matched for runs. Free to join.',
       url: 'https://www.rundog.boston',
     };
@@ -404,7 +404,7 @@ export default function BrowsePage() {
               onClick={share}
               className="mt-3 bg-pine hover:bg-pine-deep text-oat font-bold text-[14px] px-6 py-2.5 rounded-lg transition-colors"
             >
-              {shared ? 'Link copied ✓' : 'Share Go Dogs Boston'}
+              {shared ? 'Link copied ✓' : 'Share Go Dogs Boston 🎾'}
             </button>
           )}
         </div>
