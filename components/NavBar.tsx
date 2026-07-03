@@ -93,6 +93,12 @@ export default function NavBar() {
       ) : (
         <div className="flex items-center gap-3">
           <Link
+            href="/browse"
+            className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+          >
+            Browse
+          </Link>
+          <Link
             href="/login"
             className="text-sm font-medium text-white/80 hover:text-white transition-colors"
           >

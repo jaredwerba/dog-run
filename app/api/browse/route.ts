@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { bostonWeekStart } from '@/lib/dogMiles';
@@ -17,10 +17,47 @@ function scheduleOverlap(a: Schedule | null, b: Schedule | null): number {
   return count;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession();
+
+  // ── Public mode: logged-out visitors can window-shop both sides ──
+  // Strictly public-safe fields: no user ids (enumeration), no emails,
+  // no contact info, no schedules/availability, no quirks. Bounded.
   if (!session.userId || !session.role) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const sql = db();
+    const view = req.nextUrl.searchParams.get('view') === 'runners' ? 'runners' : 'dogs';
+    const weekStart = bostonWeekStart();
+
+    const rows =
+      view === 'runners'
+        ? await sql`
+            SELECT r.runner_name, r.pace, r.typical_distance, r.photo_url
+            FROM runner_profiles r
+            JOIN users u ON u.id = r.user_id
+            WHERE r.route = 'castle-island'
+            ORDER BY u.created_at DESC
+            LIMIT 60
+          `
+        : await sql`
+            SELECT d.dog_name, d.breed, d.pace, d.photo_url, d.weekly_goal_miles,
+                   (
+                     SELECT COALESCE(SUM(r.miles), 0)::float FROM runs r
+                     JOIN conversations c ON c.id = r.conversation_id
+                     WHERE c.owner_id = d.user_id AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
+                   ) AS miles_this_week
+            FROM dog_profiles d
+            JOIN users u ON u.id = d.user_id
+            WHERE d.route = 'castle-island'
+            ORDER BY u.created_at DESC
+            LIMIT 60
+          `;
+
+    return NextResponse.json({
+      // Synthetic ids — public rows must not carry real user ids
+      profiles: rows.map((p, i) => ({ id: `p${i}`, ...p, overlap: 0, pace_match: false })),
+      viewing: view,
+      public: true,
+    });
   }
 
   const sql = db();
@@ -54,15 +91,15 @@ export async function GET() {
   const rows =
     session.role === 'owner'
       ? await sql`
-          SELECT u.id, u.username, u.created_at, r.runner_name, r.pace, r.typical_distance,
-                 r.contact, r.availability, r.photo_url, r.route, r.schedule
+          SELECT u.id, u.created_at, r.runner_name, r.pace, r.typical_distance,
+                 r.availability, r.photo_url, r.route, r.schedule
           FROM runner_profiles r
           JOIN users u ON u.id = r.user_id
           WHERE r.route = 'castle-island'
         `
       : await sql`
-          SELECT u.id, u.username, u.created_at, d.dog_name, d.breed, d.pace, d.quirks,
-                 d.owner_name, d.owner_contact, d.photo_url, d.route, d.schedule,
+          SELECT u.id, u.created_at, d.dog_name, d.breed, d.pace, d.quirks,
+                 d.owner_name, d.photo_url, d.route, d.schedule,
                  d.weekly_goal_miles,
                  (
                    SELECT COALESCE(SUM(r.miles), 0)::float FROM runs r

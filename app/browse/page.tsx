@@ -63,27 +63,56 @@ export default function BrowsePage() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [shared, setShared] = useState(false);
   const [myLedger, setMyLedger] = useState<{ dogName: string; goal: number; miles: number } | null>(null);
+  // Logged-out guests can browse both sides; clicking a profile funnels to signup
+  const [publicMode, setPublicMode] = useState(false);
+  const [publicView, setPublicView] = useState<'dogs' | 'runners'>('dogs');
+  const [loadError, setLoadError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
+
+  // Restore the guest toggle from the URL (?view=runners survives back-button)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('view') === 'runners') {
+      setPublicView('runners');
+    }
+  }, []);
 
   useEffect(() => {
-    fetch('/api/me')
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.user) { router.push('/register'); return; }
-      });
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setLoadError(false);
+      // One request; the server decides mode from the session. Authed
+      // responses ignore ?view and never 401 — guests get `public: true`.
+      const d = await fetch(`/api/browse?view=${publicView}`)
+        .then((r) => r.json())
+        .catch(() => ({ error: true }));
+      if (cancelled) return;
+      if (d.error) {
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
 
-    fetch('/api/browse')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.error) { router.push('/register'); return; }
-        setProfiles(d.profiles);
-        setViewing(d.viewing);
+      const isPublic = Boolean(d.public);
+      setPublicMode(isPublic);
+      setProfiles(d.profiles);
+      setViewing(d.viewing);
+      if (!isPublic) {
         setNeedsPhoto(Boolean(d.me?.hasProfile) && !d.me?.hasPhoto);
         if (d.me?.weeklyGoalMiles && d.me?.dogName) {
           setMyLedger({ dogName: d.me.dogName, goal: d.me.weeklyGoalMiles, miles: d.me.milesThisWeek ?? 0 });
         }
-        setLoading(false);
-      });
-  }, [router]);
+      }
+      setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [publicView, retryTick]);
+
+  function switchPublicView(v: 'dogs' | 'runners') {
+    setPublicView(v);
+    window.history.replaceState(null, '', v === 'runners' ? '/browse?view=runners' : '/browse');
+  }
 
   async function share() {
     const data = {
@@ -106,18 +135,64 @@ export default function BrowsePage() {
 
   return (
     <div className="min-h-screen bg-oat pt-16 pb-10 max-w-2xl mx-auto">
-      {/* Header */}
+      {/* Header — in public mode, track the toggle instantly */}
       <div className="px-4 mb-4">
-        <p className="font-data text-[11px] tracking-[0.2em] text-clay mb-1">CASTLE ISLAND · SOUTH BOSTON</p>
+        <p className="font-data text-[11px] tracking-[0.2em] text-clay mb-1">
+          {publicMode ? 'BOSTON ONLY · CASTLE ISLAND & NEARBY' : 'CASTLE ISLAND · SOUTH BOSTON'}
+        </p>
         <h1 className="font-display text-[24px] text-soil leading-tight mb-1">
-          {viewing === 'dogs' ? 'Dogs near you' : 'Runners near you'}
+          {publicMode
+            ? publicView === 'dogs' ? 'The dogs of Boston' : 'The runners of Boston'
+            : viewing === 'dogs' ? 'Dogs near you' : 'Runners near you'}
         </h1>
         <p className="text-sm text-soil/55">
-          {viewing === 'dogs'
-            ? 'Dog owners looking for a running buddy'
-            : 'Runners who love running with dogs'}
+          {publicMode
+            ? 'Have a look around — join free to say hi.'
+            : viewing === 'dogs'
+              ? 'Dog owners looking for a running buddy'
+              : 'Runners who love running with dogs'}
         </p>
       </div>
+
+      {/* Guest toggle: dogs ↔ runners */}
+      {publicMode && (
+        <div className="px-4 mb-4">
+          <div className="inline-flex bg-linen border border-soil/10 rounded-full p-1">
+            {(['dogs', 'runners'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => switchPublicView(v)}
+                className={`relative shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  publicView === v ? 'text-oat' : 'text-soil/60 hover:text-soil'
+                }`}
+              >
+                {publicView === v && (
+                  <motion.span
+                    layoutId="public-view-indicator"
+                    transition={spring}
+                    className="absolute inset-0 bg-clay rounded-full"
+                  />
+                )}
+                <span className="relative z-10">{v === 'dogs' ? '🐶 Dogs' : '🏃 Runners'}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Load failure — never bounce anyone to signup over a network blip */}
+      {loadError && !loading && (
+        <div className="flex flex-col items-center justify-center py-16 text-soil/50 text-sm gap-3 px-6 text-center">
+          <p className="font-display text-[20px] text-soil/70">Lost the trail for a second</p>
+          <p>Couldn&apos;t load profiles — give it another go.</p>
+          <button
+            onClick={() => setRetryTick((t) => t + 1)}
+            className="bg-pine hover:bg-pine-deep text-oat font-bold text-[14px] px-6 py-2.5 rounded-lg transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      )}
 
       {/* My dog's weekly ledger (owners) */}
       {myLedger && (
@@ -202,22 +277,33 @@ export default function BrowsePage() {
         </div>
       </div>
 
-      {loading ? (
+      {loadError ? null : loading ? (
         <div className="flex items-center justify-center py-20 text-soil/50 text-sm">Loading…</div>
       ) : profiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-soil/50 text-sm gap-2 px-6 text-center">
           <JoggerDoodle className="w-72 mb-2" />
           <p className="font-display text-[20px] text-soil/70">You&apos;re early — nice.</p>
           <p className="max-w-xs">
-            No {viewing === 'dogs' ? 'dogs' : 'runners'} nearby yet. Know someone with
-            {viewing === 'dogs' ? ' a high-energy dog' : ' running shoes'}? Send them this way.
+            No {viewing === 'dogs' ? 'dogs' : 'runners'} nearby yet.{' '}
+            {publicMode
+              ? 'Be the first — it takes about a minute.'
+              : `Know someone with ${viewing === 'dogs' ? 'a high-energy dog' : 'running shoes'}? Send them this way.`}
           </p>
-          <button
-            onClick={share}
-            className="mt-3 bg-pine hover:bg-pine-deep text-oat font-bold text-[14px] px-6 py-2.5 rounded-lg transition-colors"
-          >
-            {shared ? 'Link copied ✓' : 'Share Go Dogs Boston'}
-          </button>
+          {publicMode ? (
+            <button
+              onClick={() => router.push('/register')}
+              className="mt-3 bg-pine hover:bg-pine-deep text-oat font-bold text-[14px] px-6 py-2.5 rounded-lg transition-colors"
+            >
+              Create a profile
+            </button>
+          ) : (
+            <button
+              onClick={share}
+              className="mt-3 bg-pine hover:bg-pine-deep text-oat font-bold text-[14px] px-6 py-2.5 rounded-lg transition-colors"
+            >
+              {shared ? 'Link copied ✓' : 'Share Go Dogs Boston'}
+            </button>
+          )}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-soil/50 text-sm gap-2">
@@ -243,6 +329,7 @@ export default function BrowsePage() {
                   tags={[{ label: 'Pace', value: PACE_LABELS[p.pace] ?? p.pace }]}
                   viewing="dogs"
                   badges={[...(ledgerBadge(p) ? [ledgerBadge(p)!] : []), ...matchBadges(p)]}
+                  href={publicMode ? `/register?meet=${encodeURIComponent(p.dog_name)}&side=dogs` : undefined}
                 />
               ) : (
                 <ProfileCard
@@ -256,11 +343,33 @@ export default function BrowsePage() {
                   ]}
                   viewing="runners"
                   badges={matchBadges(p as RunnerProfile)}
+                  href={publicMode ? `/register?meet=${encodeURIComponent((p as RunnerProfile).runner_name)}&side=runners` : undefined}
                 />
               )}
             </motion.div>
           ))}
         </div>
+      )}
+
+      {/* Guest signup funnel */}
+      {publicMode && !loading && profiles.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.3 }}
+          className="mx-4 mt-6 bg-pine text-white rounded-xl px-5 py-4 text-center"
+        >
+          <p className="font-display text-[18px] mb-1">See someone you&apos;d run with?</p>
+          <p className="text-[13px] text-white/70 mb-3">
+            Free to join · Boston only · takes about a minute with a passkey
+          </p>
+          <button
+            onClick={() => router.push('/register')}
+            className="bg-tennis text-soil font-bold text-[14px] px-6 py-2.5 rounded-lg hover:bg-oat transition-colors"
+          >
+            Create a profile
+          </button>
+        </motion.div>
       )}
     </div>
   );

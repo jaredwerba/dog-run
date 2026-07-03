@@ -31,9 +31,18 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   // null until mounted — avoids a server/client hydration mismatch
   const [supported, setSupported] = useState<boolean | null>(null);
+  // Set when a guest clicked a profile while browsing ("?meet=Tank&side=dogs")
+  const [meet, setMeet] = useState('');
+  const [meetSide, setMeetSide] = useState<'dogs' | 'runners' | ''>('');
 
   useEffect(() => {
     setSupported(browserSupportsWebAuthn());
+    const params = new URLSearchParams(window.location.search);
+    // Names only — strip anything spammy/URL-like from the shareable param
+    const rawMeet = params.get('meet') ?? '';
+    setMeet(rawMeet.replace(/[^\p{L}\p{N} .''-]/gu, '').trim().slice(0, 30));
+    const side = params.get('side');
+    setMeetSide(side === 'dogs' || side === 'runners' ? side : '');
   }, []);
 
   if (supported === false) {
@@ -82,7 +91,20 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-oat flex flex-col items-center justify-center px-6 pt-20 pb-10">
       <div className="text-center mb-8">
+        {meet && (
+          <motion.p
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="inline-block bg-linen border border-tennis rounded-full px-4 py-1.5 text-[13px] font-bold text-soil mb-3"
+          >
+            🐾 {meet} is waiting on the other side
+          </motion.p>
+        )}
         <h1 className="font-display text-[26px] text-soil leading-tight">Create your account</h1>
+        <p className="text-sm text-soil/55 mt-1.5">
+          Boston only, for now — first runs at Castle Island &amp; nearby parks.
+        </p>
       </div>
 
       <AnimatePresence mode="wait" custom={dir} initial={false}>
@@ -101,7 +123,12 @@ export default function RegisterPage() {
             <motion.button
               {...press}
               className={`${cardCls} p-5 text-left cursor-pointer mb-3 hover:border-pine/50 hover:shadow-md transition-shadow`}
-              onClick={() => { setRole('owner'); goTo('email', 1); }}
+              onClick={() => {
+                setRole('owner');
+                // Owners browse runners — a dog they clicked won't be in their feed
+                if (meetSide === 'dogs') setMeet('');
+                goTo('email', 1);
+              }}
             >
               <div className="text-3xl mb-1">🐶</div>
               <div className="font-bold text-soil text-[17px]">Dog Owner</div>
@@ -110,7 +137,12 @@ export default function RegisterPage() {
             <motion.button
               {...press}
               className={`${cardCls} p-5 text-left cursor-pointer hover:border-pine/50 hover:shadow-md transition-shadow`}
-              onClick={() => { setRole('runner'); goTo('email', 1); }}
+              onClick={() => {
+                setRole('runner');
+                // Runners browse dogs — a runner they clicked won't be in their feed
+                if (meetSide === 'runners') setMeet('');
+                goTo('email', 1);
+              }}
             >
               <div className="text-3xl mb-1">🏃</div>
               <div className="font-bold text-soil text-[17px]">Runner</div>

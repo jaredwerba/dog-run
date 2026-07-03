@@ -10,12 +10,14 @@ interface Props {
   viewing: 'runners' | 'dogs';
   /* Match-quality badges, e.g. "4 shared times", "Same pace" */
   badges?: string[];
+  /* Override destination (e.g. guests get funneled to /register) */
+  href?: string;
 }
 
-export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewing, badges = [] }: Props) {
+export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewing, badges = [], href }: Props) {
   return (
     <Link
-      href={`/profile/${id}`}
+      href={href ?? `/profile/${id}`}
       className="block bg-linen rounded-xl border border-soil/10 shadow-sm overflow-hidden hover:shadow-md hover:border-pine/40 active:scale-[0.98] transition-all"
     >
       <div className="relative h-40 bg-moss/25">
@@ -43,7 +45,7 @@ export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewi
         <h3 className="font-bold text-soil text-[16px]">{title}</h3>
         <p className="text-sm text-soil/55 mb-3">{subtitle}</p>
         <div className="flex flex-wrap gap-1.5">
-          {tags.map((t) => (
+          {tags.filter((t) => t.value?.trim()).map((t) => (
             <span
               key={t.label}
               className="font-data text-[10px] tracking-[0.08em] uppercase px-2 py-1 rounded-md bg-oat text-bark border border-soil/10"

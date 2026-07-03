@@ -238,10 +238,24 @@ function ForestHero() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.5 }}
-          className="font-data text-[11px] tracking-[0.15em] text-bark/60 mt-10"
+          transition={{ duration: 0.7, delay: 0.4 }}
+          className="mt-8"
         >
-          FREE TO JOIN · VERIFIED PROFILES · FIRST RUNS IN PUBLIC PARKS
+          <Link
+            href="/browse"
+            className="text-[14px] font-bold text-bark underline decoration-bark/30 underline-offset-4 hover:decoration-bark transition-colors"
+          >
+            or just browse the dogs &amp; runners first →
+          </Link>
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, delay: 0.5 }}
+          className="font-data text-[11px] tracking-[0.15em] text-bark/60 mt-6"
+        >
+          FREE TO JOIN · BOSTON ONLY · FIRST RUNS IN PUBLIC PARKS
         </motion.p>
       </div>
     </section>
