@@ -206,7 +206,7 @@ function ForestHero() {
           transition={{ duration: 0.7, delay: 0.2 }}
           className="text-[16px] sm:text-[18px] leading-relaxed text-bark max-w-xl mx-auto mb-10"
         >
-          Go Dogs Boston 🎾 matches runners with high-energy dogs and their owners.
+          Go Dogs Boston matches runners with high-energy dogs and their owners.
           Runners get a partner who never cancels. Dogs get sunshine, trails,
           and the miles they were born for.
         </motion.p>
