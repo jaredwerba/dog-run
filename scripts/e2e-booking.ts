@@ -3,6 +3,9 @@
  *
  *   npm run e2e            (dev server must be up on :3001)
  *
+ * Local-only: forged cookies require the local SESSION_SECRET, which
+ * (correctly) does not match production's.
+ *
  * Creates two throwaway users (usernames without "@" so every email send is
  * skipped), forges their session cookies with SESSION_SECRET, walks the whole
  * flow — browse → conversation → propose → accept → feedback → rebook →
