@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { bostonWeekStart } from '@/lib/dogMiles';
+import { bostonToday, bostonWeekStart } from '@/lib/dogMiles';
 
 export async function GET(
   _req: NextRequest,
@@ -14,6 +14,7 @@ export async function GET(
 
   const { id } = await params;
   const sql = db();
+  const today = bostonToday();
 
   // Viewer's own schedule — for shared-slot highlights
   const mineRows =
@@ -43,7 +44,7 @@ export async function GET(
                SELECT COUNT(*) FROM runs r2
                JOIN conversations c2 ON c2.id = r2.conversation_id
                WHERE c2.runner_id = ${id} AND c2.owner_id = rr.author_id
-                 AND r2.status = 'confirmed' AND r2.run_date <= now()::date
+                 AND r2.status = 'confirmed' AND r2.run_date <= ${today}
              )::int AS runs_together
       FROM runner_reviews rr
       LEFT JOIN dog_profiles dp ON dp.user_id = rr.author_id
@@ -56,7 +57,7 @@ export async function GET(
         SELECT 1 FROM runs r3
         JOIN conversations c3 ON c3.id = r3.conversation_id
         WHERE c3.owner_id = ${uid} AND c3.runner_id = ${id}
-          AND r3.status = 'confirmed' AND r3.run_date <= now()::date
+          AND r3.status = 'confirmed' AND r3.run_date <= ${today}
         LIMIT 1
       `
     ).length > 0;
@@ -94,7 +95,7 @@ export async function GET(
                SELECT COUNT(*) FROM runs r2
                JOIN conversations c2 ON c2.id = r2.conversation_id
                WHERE c2.owner_id = ${id} AND c2.runner_id = dr.author_id
-                 AND r2.status = 'confirmed' AND r2.run_date <= now()::date
+                 AND r2.status = 'confirmed' AND r2.run_date <= ${today}
              )::int AS runs_together
       FROM dog_reviews dr
       LEFT JOIN runner_profiles rp ON rp.user_id = dr.author_id
@@ -107,7 +108,7 @@ export async function GET(
         SELECT 1 FROM runs r3
         JOIN conversations c3 ON c3.id = r3.conversation_id
         WHERE c3.runner_id = ${uid} AND c3.owner_id = ${id}
-          AND r3.status = 'confirmed' AND r3.run_date <= now()::date
+          AND r3.status = 'confirmed' AND r3.run_date <= ${today}
         LIMIT 1
       `
     ).length > 0;

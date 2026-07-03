@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 import { getConvParticipants } from '@/lib/participants';
 import { notifyRunProposed } from '@/lib/email';
 import { formatRunLabel } from '@/lib/ics';
-import { defaultMilesFor } from '@/lib/dogMiles';
+import { bostonToday, defaultMilesFor } from '@/lib/dogMiles';
 
 // POST /api/runs — propose a run in a conversation
 export async function POST(req: NextRequest) {
@@ -17,6 +17,17 @@ export async function POST(req: NextRequest) {
   const { conversationId, date, time, location, miles } = await req.json();
   if (!conversationId || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? '') || !/^\d{2}:\d{2}$/.test(time ?? '')) {
     return NextResponse.json({ error: 'conversationId, date (YYYY-MM-DD) and time (HH:MM) required' }, { status: 400 });
+  }
+
+  // Runs happen between today and ~two months out
+  const today = bostonToday();
+  const horizon = new Date(`${today}T12:00:00Z`);
+  horizon.setUTCDate(horizon.getUTCDate() + 60);
+  if (date < today) {
+    return NextResponse.json({ error: 'That date already happened — pick an upcoming one' }, { status: 400 });
+  }
+  if (date > horizon.toISOString().slice(0, 10)) {
+    return NextResponse.json({ error: 'Runs can be booked up to 60 days out' }, { status: 400 });
   }
   const parsedMiles = Number(miles);
   const runMiles =

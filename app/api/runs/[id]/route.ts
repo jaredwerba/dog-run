@@ -2,9 +2,54 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { getConvParticipants } from '@/lib/participants';
-import { notifyRunConfirmed, notifyRunDeclined } from '@/lib/email';
+import { getConvParticipants, type ConvParticipants } from '@/lib/participants';
+import { notifyRunConfirmed, notifyRunDeclined, notifyRunProposed } from '@/lib/email';
 import { buildIcs, formatRunLabel } from '@/lib/ics';
+import { bostonToday } from '@/lib/dogMiles';
+
+/* Same weekday/time/place, first occurrence strictly after today */
+function nextWeekDate(runDate: string, today: string): string {
+  const d = new Date(`${runDate}T12:00:00Z`);
+  while (d.toISOString().slice(0, 10) <= today) d.setUTCDate(d.getUTCDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
+async function emailBothConfirmed(
+  participants: ConvParticipants,
+  args: { runId: string; date: string; time: string; location: string; conversationId: string }
+) {
+  const label = formatRunLabel(args.date, args.time);
+  const ics = buildIcs({
+    uid: args.runId,
+    date: args.date,
+    time: args.time,
+    location: args.location,
+    summary: `Go Dogs Boston run — ${participants.runner.name} × ${participants.owner.name}`,
+    description: `Booked on Go Dogs Boston. Meet at ${args.location}. Bring water — and maybe a tennis ball.`,
+    organizer: { name: participants.owner.name, email: participants.owner.email },
+    attendee: { name: participants.runner.name, email: participants.runner.email },
+  });
+  await Promise.all([
+    notifyRunConfirmed({
+      to: participants.owner.email,
+      recipientName: participants.owner.name,
+      otherName: participants.runner.label,
+      runLabel: label,
+      location: args.location,
+      conversationId: args.conversationId,
+      ics,
+    }),
+    notifyRunConfirmed({
+      to: participants.runner.email,
+      recipientName: participants.runner.name,
+      otherName: participants.owner.label,
+      runLabel: label,
+      location: args.location,
+      conversationId: args.conversationId,
+      ics,
+    }),
+  ]);
+}
 
 // POST /api/runs/[id] — accept / decline (recipient) or cancel (proposer)
 export async function POST(
@@ -39,10 +84,16 @@ export async function POST(
   const conversationId = run.conversation_id as string;
   const isProposer = run.proposer_id === uid;
 
+  const today = bostonToday();
+  const runDate = String(run.run_date).slice(0, 10);
+
   // ── Two-sided post-run feedback: comment + optional miles/review/rebook ──
   if (action === 'feedback') {
     if (run.status !== 'confirmed') {
       return NextResponse.json({ error: 'Only confirmed runs can get feedback' }, { status: 400 });
+    }
+    if (runDate > today) {
+      return NextResponse.json({ error: "That run hasn't happened yet" }, { status: 400 });
     }
     const role = run.owner_id === uid ? 'owner' : 'runner';
     const comment = String(body.comment ?? '').trim().slice(0, 500);
@@ -99,7 +150,66 @@ export async function POST(
       VALUES (${conversationId}, ${uid}, ${chatNote}, ${photoUrl})
     `;
 
-    return NextResponse.json({ ok: true, wantsRebook });
+    // ── Rebook, server-side ────────────────────────────────
+    // If the other side already said "run again" for this run, both have
+    // consented — book it directly, no extra tap. Otherwise file a proposal.
+    let rebooked: 'confirmed' | 'proposed' | null = null;
+    if (wantsRebook) {
+      const nextDate = nextWeekDate(runDate, today);
+      const otherWants = await sql`
+        SELECT 1 FROM run_feedback
+        WHERE run_id = ${id} AND author_id != ${uid} AND wants_rebook = true
+      `;
+      // Supersede any open proposal in this conversation either way
+      await sql`
+        UPDATE runs SET status = 'cancelled', responded_at = now()
+        WHERE conversation_id = ${conversationId} AND status = 'proposed'
+      `;
+      const mutual = otherWants.length > 0;
+      const [nextRun] = await sql`
+        INSERT INTO runs (conversation_id, proposer_id, run_date, run_time, location, miles, status, responded_at)
+        VALUES (${conversationId}, ${uid}, ${nextDate}, ${run.run_time}, ${run.location},
+                ${Number(run.miles) || 3}, ${mutual ? 'confirmed' : 'proposed'}, ${mutual ? new Date().toISOString() : null})
+        RETURNING id
+      `;
+      rebooked = mutual ? 'confirmed' : 'proposed';
+      const nextLabel = formatRunLabel(nextDate, run.run_time as string);
+      await sql`
+        INSERT INTO messages (conversation_id, sender_id, content)
+        VALUES (${conversationId}, ${uid}, ${
+          mutual
+            ? `✅ You both wanted it — next run booked: ${nextLabel} at ${run.location}. Invites on the way!`
+            : `📅 Proposed the same run again — ${nextLabel} at ${run.location}`
+        })
+      `;
+
+      after(async () => {
+        const participants = await getConvParticipants(sql, conversationId);
+        if (!participants) return;
+        const sides = participants.bySide(uid);
+        if (!sides) return;
+        if (mutual) {
+          await emailBothConfirmed(participants, {
+            runId: nextRun.id as string,
+            date: nextDate,
+            time: run.run_time as string,
+            location: run.location as string,
+            conversationId,
+          });
+        } else {
+          await notifyRunProposed({
+            to: sides.other.email,
+            recipientName: sides.other.name,
+            proposerName: sides.me.label,
+            runLabel: nextLabel,
+            location: run.location as string,
+            conversationId,
+          });
+        }
+      });
+    }
+
+    return NextResponse.json({ ok: true, wantsRebook, rebooked });
   }
 
   // ── Post-run report: log actual miles + a note, fills the mileage ledger ──
@@ -140,6 +250,9 @@ export async function POST(
     }
     if (run.status !== 'proposed') {
       return NextResponse.json({ error: 'Run already responded to' }, { status: 400 });
+    }
+    if (action === 'accept' && runDate < today) {
+      return NextResponse.json({ error: 'That proposal is for a date that already passed — ask for a new time' }, { status: 400 });
     }
   }
 

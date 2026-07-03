@@ -2,8 +2,10 @@
 
 import { motion } from 'motion/react';
 import { pressFirm } from '@/components/ux';
+import { scheduleToText } from '@/lib/schedule';
 
 export type Schedule = Record<string, string[]>;
+export { scheduleToText };
 
 const DAYS = [
   { key: 'mon', label: 'Mon' },
@@ -89,15 +91,4 @@ export default function SchedulePicker({ value, onChange }: Props) {
       </div>
     </div>
   );
-}
-
-export function scheduleToText(schedule: Schedule): string {
-  const parts: string[] = [];
-  for (const day of DAYS) {
-    const slots = schedule[day.key];
-    if (!slots || slots.length === 0) continue;
-    const times = slots.map((s) => SLOTS.find((sl) => sl.key === s)?.label ?? s);
-    parts.push(`${day.label} ${times.join(', ')}`);
-  }
-  return parts.length > 0 ? parts.join(' · ') : 'No schedule set';
 }

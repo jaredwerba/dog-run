@@ -43,6 +43,11 @@ export function defaultMilesFor(location: string): number {
 
 export const MILES_OPTIONS = [1.5, 2, 2.2, 3, 4, 5, 6, 8];
 
+/* Today's date in Boston as YYYY-MM-DD */
+export function bostonToday(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+}
+
 /* Monday of the current week in Boston, as YYYY-MM-DD */
 export function bostonWeekStart(): string {
   const now = new Date();

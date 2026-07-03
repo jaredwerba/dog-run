@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-
-/* Today's date in Boston as YYYY-MM-DD */
-function bostonToday(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
-}
+import { bostonToday } from '@/lib/dogMiles';
 
 // GET /api/runs/mine — everything the dashboard needs in one shot
 export async function GET() {
@@ -42,8 +38,11 @@ export async function GET() {
   const upcoming = rows.filter(
     (r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) >= today
   );
-  const awaitingMe = rows.filter((r) => r.status === 'proposed' && r.proposer_id !== uid);
-  const awaitingThem = rows.filter((r) => r.status === 'proposed' && r.proposer_id === uid);
+  // Stale proposals (for dates that already passed) are dead — don't show them
+  const openProposal = (r: (typeof rows)[number]) =>
+    r.status === 'proposed' && String(r.run_date).slice(0, 10) >= today;
+  const awaitingMe = rows.filter((r) => openProposal(r) && r.proposer_id !== uid);
+  const awaitingThem = rows.filter((r) => openProposal(r) && r.proposer_id === uid);
   const past = rows
     .filter((r) => r.status === 'confirmed' && String(r.run_date).slice(0, 10) < today)
     .reverse();

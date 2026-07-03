@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { bostonWeekStart } from '@/lib/dogMiles';
+import { bostonToday, bostonWeekStart } from '@/lib/dogMiles';
 
 /* First of the current month / year, Boston time, as YYYY-MM-DD */
 function bostonMonthStart(): string {
@@ -23,6 +23,7 @@ export async function GET() {
   const sql = db();
   const uid = session.userId;
   const weekStart = bostonWeekStart();
+  const today = bostonToday();
   const monthStart = bostonMonthStart();
   const yearStart = bostonYearStart();
   const isOwner = session.role === 'owner';
@@ -39,7 +40,7 @@ export async function GET() {
           COUNT(DISTINCT c.id)::int AS buddies
         FROM runs r
         JOIN conversations c ON c.id = r.conversation_id
-        WHERE c.owner_id = ${uid} AND r.status = 'confirmed' AND r.run_date <= now()::date
+        WHERE c.owner_id = ${uid} AND r.status = 'confirmed' AND r.run_date <= ${today}
       `
     : await sql`
         SELECT
@@ -52,7 +53,7 @@ export async function GET() {
           COUNT(DISTINCT c.id)::int AS buddies
         FROM runs r
         JOIN conversations c ON c.id = r.conversation_id
-        WHERE c.runner_id = ${uid} AND r.status = 'confirmed' AND r.run_date <= now()::date
+        WHERE c.runner_id = ${uid} AND r.status = 'confirmed' AND r.run_date <= ${today}
       `;
 
   const favorites = await sql`SELECT COUNT(*)::int AS n FROM favorites WHERE user_id = ${uid}`;
@@ -63,7 +64,7 @@ export async function GET() {
     FROM runs r
     JOIN conversations c ON c.id = r.conversation_id
     WHERE (c.owner_id = ${uid} OR c.runner_id = ${uid})
-      AND ((r.status = 'confirmed' AND r.run_date >= now()::date) OR r.status = 'proposed')
+      AND ((r.status = 'confirmed' AND r.run_date >= ${today}) OR r.status = 'proposed')
   `;
 
   const t = totals[0];

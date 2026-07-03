@@ -13,6 +13,12 @@ export async function POST(req: NextRequest) {
   if (!file) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 });
   }
+  if (!file.type.startsWith('image/')) {
+    return NextResponse.json({ error: 'Only images can be uploaded' }, { status: 400 });
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Images must be under 8MB' }, { status: 400 });
+  }
 
   const blob = await put(`profiles/${session.userId}-${Date.now()}`, file, {
     access: 'public',

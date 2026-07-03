@@ -1,4 +1,9 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, types } from '@neondatabase/serverless';
+
+// DATE columns come back as plain 'YYYY-MM-DD' strings, not JS Date objects.
+// Without this, `String(run.run_date).slice(0, 10)` produces "Fri Jul 03"
+// garbage and everything date-shaped breaks (labels, ICS, sorting).
+types.setTypeParser(1082 /* DATE */, (v: string) => v);
 
 // Row type returned by queries
 export type Row = Record<string, unknown>;

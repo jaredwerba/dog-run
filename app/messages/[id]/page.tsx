@@ -186,6 +186,8 @@ function RunPlanner({
   async function submitReport() {
     if (!lastCompleted || busy) return;
     setBusy(true);
+    // Rebook happens server-side: proposal normally, auto-booked when both
+    // sides toggled "run again" for the same run.
     await fetch(`/api/runs/${lastCompleted.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -198,22 +200,6 @@ function RunPlanner({
         photoUrl: reportPhotoUrl || undefined,
       }),
     });
-    if (wantRebook) {
-      // Same run, same time, next week — the rebook machinery
-      const next = new Date(`${String(lastCompleted.run_date).slice(0, 10)}T12:00:00`);
-      while (next.toISOString().slice(0, 10) <= today) next.setDate(next.getDate() + 7);
-      await fetch('/api/runs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId,
-          date: next.toISOString().slice(0, 10),
-          time: lastCompleted.run_time,
-          location: lastCompleted.location,
-          miles: Number(lastCompleted.miles) || undefined,
-        }),
-      });
-    }
     setReportNote('');
     setReportMiles('');
     setReportPhotoUrl('');

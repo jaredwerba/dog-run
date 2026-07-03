@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { bostonWeekStart } from '@/lib/dogMiles';
-import { scheduleToText } from '@/components/SchedulePicker';
-
-type Schedule = Record<string, string[]>;
+import { compactScheduleText, type Schedule } from '@/lib/schedule';
 
 /* Count of day+time slots both schedules share */
 function scheduleOverlap(a: Schedule | null, b: Schedule | null): number {
@@ -124,8 +122,8 @@ export async function GET(req: NextRequest) {
       return {
         ...rest,
         // `availability` is a legacy free-text column that's never populated —
-        // derive the real "when" summary from the actual schedule instead
-        ...(session.role === 'owner' ? { availability: sched ? scheduleToText(sched) : 'No schedule set' } : {}),
+        // derive a compact "when" summary from the actual schedule instead
+        ...(session.role === 'owner' ? { availability: compactScheduleText(sched) } : {}),
         overlap: scheduleOverlap(mySchedule, sched),
         pace_match: Boolean(myPace && p.pace === myPace),
       } as Record<string, unknown> & { overlap: number; pace_match: boolean };

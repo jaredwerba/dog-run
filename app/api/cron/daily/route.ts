@@ -3,13 +3,9 @@ import { db } from '@/lib/db';
 import { getConvParticipants } from '@/lib/participants';
 import { notifyRunReminder, notifyRunFollowup } from '@/lib/email';
 import { formatRunLabel } from '@/lib/ics';
+import { bostonToday } from '@/lib/dogMiles';
 
 export const maxDuration = 60;
-
-/* Today's date in Boston as YYYY-MM-DD */
-function bostonToday(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
-}
 
 // GET /api/cron/daily — Vercel Cron, 10:00 UTC (6am Boston)
 // 1) Morning-of reminders for today's confirmed runs

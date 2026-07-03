@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
+import { bostonToday } from '@/lib/dogMiles';
 
 // POST /api/reviews — leave/edit/remove a comment (+ optional photo) on the
 // other side after a completed run together. Comments only, never scores.
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
   const uid = session.userId;
   const isOwner = session.role === 'owner';
   const text = String(comment ?? '').trim().slice(0, 500);
+  const today = bostonToday();
   const photo = typeof photoUrl === 'string' && photoUrl ? photoUrl : null;
 
   // Eligibility: at least one completed confirmed run together
@@ -28,14 +30,14 @@ export async function POST(req: NextRequest) {
         SELECT 1 FROM runs r
         JOIN conversations c ON c.id = r.conversation_id
         WHERE c.owner_id = ${uid} AND c.runner_id = ${targetId}
-          AND r.status = 'confirmed' AND r.run_date <= now()::date
+          AND r.status = 'confirmed' AND r.run_date <= ${today}
         LIMIT 1
       `
     : await sql`
         SELECT 1 FROM runs r
         JOIN conversations c ON c.id = r.conversation_id
         WHERE c.runner_id = ${uid} AND c.owner_id = ${targetId}
-          AND r.status = 'confirmed' AND r.run_date <= now()::date
+          AND r.status = 'confirmed' AND r.run_date <= ${today}
         LIMIT 1
       `;
   if (eligible.length === 0) {
