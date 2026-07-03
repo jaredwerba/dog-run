@@ -50,7 +50,7 @@ export async function GET(
 
   return new NextResponse(ics, {
     headers: {
-      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Type': 'text/calendar; charset=utf-8; method=PUBLISH',
       'Content-Disposition': 'attachment; filename="go-dogs-boston-run.ics"',
     },
   });

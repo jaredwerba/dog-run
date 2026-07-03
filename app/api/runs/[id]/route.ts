@@ -47,7 +47,8 @@ export async function POST(
     const role = run.owner_id === uid ? 'owner' : 'runner';
     const comment = String(body.comment ?? '').trim().slice(0, 500);
     const wantsRebook = Boolean(body.wantsRebook);
-    const shareAsReview = role === 'owner' && Boolean(body.shareAsReview) && comment.length > 0;
+    const photoUrl = typeof body.photoUrl === 'string' && body.photoUrl ? body.photoUrl : null;
+    const shareAsReview = Boolean(body.shareAsReview) && comment.length > 0;
 
     let milesActual: number | null = null;
     if (role === 'runner' && body.milesActual !== undefined && body.milesActual !== '') {
@@ -59,13 +60,14 @@ export async function POST(
     }
 
     await sql`
-      INSERT INTO run_feedback (run_id, author_id, role, comment, wants_rebook, miles_actual, share_as_review)
-      VALUES (${id}, ${uid}, ${role}, ${comment}, ${wantsRebook}, ${milesActual}, ${shareAsReview})
+      INSERT INTO run_feedback (run_id, author_id, role, comment, wants_rebook, miles_actual, share_as_review, photo_url)
+      VALUES (${id}, ${uid}, ${role}, ${comment}, ${wantsRebook}, ${milesActual}, ${shareAsReview}, ${photoUrl})
       ON CONFLICT (run_id, author_id) DO UPDATE SET
         comment = EXCLUDED.comment,
         wants_rebook = EXCLUDED.wants_rebook,
         miles_actual = EXCLUDED.miles_actual,
         share_as_review = EXCLUDED.share_as_review,
+        photo_url = EXCLUDED.photo_url,
         created_at = now()
     `;
 
@@ -74,20 +76,27 @@ export async function POST(
       await sql`UPDATE runs SET miles = ${milesActual}, reported_at = now() WHERE id = ${id}`;
     }
 
-    // Owner can publish their comment on the runner's profile
-    if (shareAsReview) {
+    // Owner reviews the runner; runner reviews the dog. Comments only, no scores.
+    if (shareAsReview && role === 'owner') {
       await sql`
-        INSERT INTO runner_reviews (runner_id, author_id, comment)
-        VALUES (${run.runner_id}, ${uid}, ${comment})
+        INSERT INTO runner_reviews (runner_id, author_id, comment, photo_url)
+        VALUES (${run.runner_id}, ${uid}, ${comment}, ${photoUrl})
         ON CONFLICT (runner_id, author_id) DO UPDATE SET
-          comment = EXCLUDED.comment, created_at = now()
+          comment = EXCLUDED.comment, photo_url = EXCLUDED.photo_url, created_at = now()
+      `;
+    } else if (shareAsReview && role === 'runner') {
+      await sql`
+        INSERT INTO dog_reviews (dog_owner_id, author_id, comment, photo_url)
+        VALUES (${run.owner_id}, ${uid}, ${comment}, ${photoUrl})
+        ON CONFLICT (dog_owner_id, author_id) DO UPDATE SET
+          comment = EXCLUDED.comment, photo_url = EXCLUDED.photo_url, created_at = now()
       `;
     }
 
     const chatNote = `🏁 ${comment ? `"${comment}"` : 'Logged the run'}${milesActual !== null ? ` — ${milesActual} mi` : ''}${wantsRebook ? ' · up for the same time next week 🔁' : ''}`;
     await sql`
-      INSERT INTO messages (conversation_id, sender_id, content)
-      VALUES (${conversationId}, ${uid}, ${chatNote})
+      INSERT INTO messages (conversation_id, sender_id, content, photo_url)
+      VALUES (${conversationId}, ${uid}, ${chatNote}, ${photoUrl})
     `;
 
     return NextResponse.json({ ok: true, wantsRebook });

@@ -95,9 +95,10 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const { content } = await req.json();
-  if (!content?.trim()) {
-    return NextResponse.json({ error: 'content required' }, { status: 400 });
+  const { content, photoUrl } = await req.json();
+  const text = String(content ?? '').trim();
+  if (!text && !photoUrl) {
+    return NextResponse.json({ error: 'content or photoUrl required' }, { status: 400 });
   }
 
   // Spam guard: only email if the recipient has no other unread from me
@@ -106,10 +107,9 @@ export async function POST(
     WHERE conversation_id = ${id} AND sender_id = ${uid} AND read_at IS NULL
   `) as [{ unread: number }];
 
-  const text = content.trim();
   const [msg] = await sql`
-    INSERT INTO messages (conversation_id, sender_id, content)
-    VALUES (${id}, ${uid}, ${text})
+    INSERT INTO messages (conversation_id, sender_id, content, photo_url)
+    VALUES (${id}, ${uid}, ${text}, ${photoUrl ?? null})
     RETURNING *
   `;
 
@@ -122,7 +122,7 @@ export async function POST(
         to: sides.other.email,
         recipientName: sides.other.name,
         senderName: sides.me.label,
-        preview: text.slice(0, 200),
+        preview: text || '📷 sent a photo',
         conversationId: id,
       });
     });

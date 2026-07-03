@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
 
 interface UserInfo {
   role: 'owner' | 'runner';
@@ -15,8 +14,6 @@ export default function NavBar() {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [unread, setUnread] = useState(0);
-  const [pendingRuns, setPendingRuns] = useState(0);
 
   useEffect(() => {
     fetch('/api/me')
@@ -31,18 +28,6 @@ export default function NavBar() {
         setUser({ role: d.user.role, displayName, photoUrl: profile?.photo_url });
       });
   }, [pathname]);
-
-  useEffect(() => {
-    if (!user) return;
-    const check = () =>
-      fetch('/api/unread').then((r) => r.json()).then((d) => {
-        setUnread(d.count ?? 0);
-        setPendingRuns(d.pendingRuns ?? 0);
-      });
-    check();
-    const interval = setInterval(check, 15000);
-    return () => clearInterval(interval);
-  }, [user]);
 
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -59,41 +44,6 @@ export default function NavBar() {
 
       {user ? (
         <div className="flex items-center gap-3">
-          {/* Runs */}
-          <Link href="/runs" className="relative p-1 text-white/80 hover:text-white transition-colors" aria-label="Your runs">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="17" rx="3" />
-              <path d="M3 9h18M8 2v4M16 2v4" />
-            </svg>
-            {pendingRuns > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 15 }}
-                className="absolute -top-0.5 -right-0.5 bg-clay text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
-              >
-                {pendingRuns > 9 ? '9+' : pendingRuns}
-              </motion.span>
-            )}
-          </Link>
-
-          {/* Messages */}
-          <Link href="/messages" className="relative p-1 text-white/80 hover:text-white transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            {unread > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 15 }}
-                className="absolute -top-0.5 -right-0.5 bg-clay text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
-              >
-                {unread > 9 ? '9+' : unread}
-              </motion.span>
-            )}
-          </Link>
-
           {/* Profile pill */}
           <Link
             href="/profile/setup"

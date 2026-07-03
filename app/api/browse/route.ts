@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { bostonWeekStart } from '@/lib/dogMiles';
+import { scheduleToText } from '@/components/SchedulePicker';
 
 type Schedule = Record<string, string[]>;
 
@@ -45,7 +46,8 @@ export async function GET(req: NextRequest) {
                      SELECT COALESCE(SUM(r.miles), 0)::float FROM runs r
                      JOIN conversations c ON c.id = r.conversation_id
                      WHERE c.owner_id = d.user_id AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
-                   ) AS miles_this_week
+                   ) AS miles_this_week,
+                   (SELECT COUNT(*)::int FROM dog_reviews dr WHERE dr.dog_owner_id = u.id) AS review_count
             FROM dog_profiles d
             JOIN users u ON u.id = d.user_id
             WHERE d.route = 'castle-island'
@@ -107,7 +109,8 @@ export async function GET(req: NextRequest) {
                    SELECT COALESCE(SUM(r.miles), 0)::float FROM runs r
                    JOIN conversations c ON c.id = r.conversation_id
                    WHERE c.owner_id = d.user_id AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
-                 ) AS miles_this_week
+                 ) AS miles_this_week,
+                 (SELECT COUNT(*)::int FROM dog_reviews dr WHERE dr.dog_owner_id = u.id) AS review_count
           FROM dog_profiles d
           JOIN users u ON u.id = d.user_id
           WHERE d.route = 'castle-island'
@@ -117,9 +120,13 @@ export async function GET(req: NextRequest) {
   const profiles = rows
     .map((p) => {
       const { schedule, ...rest } = p;
+      const sched = (schedule as Schedule | null) ?? null;
       return {
         ...rest,
-        overlap: scheduleOverlap(mySchedule, schedule as Schedule | null),
+        // `availability` is a legacy free-text column that's never populated —
+        // derive the real "when" summary from the actual schedule instead
+        ...(session.role === 'owner' ? { availability: sched ? scheduleToText(sched) : 'No schedule set' } : {}),
+        overlap: scheduleOverlap(mySchedule, sched),
         pace_match: Boolean(myPace && p.pace === myPace),
       } as Record<string, unknown> & { overlap: number; pace_match: boolean };
     })

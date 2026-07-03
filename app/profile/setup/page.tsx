@@ -43,6 +43,8 @@ export default function ProfileSetupPage() {
   const [runnerName, setRunnerName] = useState('');
   const [runnerPace, setRunnerPace] = useState('');
   const [typicalDistance, setTypicalDistance] = useState('');
+  const [soloPace, setSoloPace] = useState('');
+  const [personalBest, setPersonalBest] = useState('');
 
   useEffect(() => {
     fetch('/api/me')
@@ -66,6 +68,8 @@ export default function ProfileSetupPage() {
           setRunnerName(p.runner_name ?? '');
           setRunnerPace(p.pace ?? '');
           setTypicalDistance(p.typical_distance ?? '');
+          setSoloPace(p.solo_pace ?? '');
+          setPersonalBest(p.personal_best ?? '');
         }
       });
   }, [router]);
@@ -89,7 +93,7 @@ export default function ProfileSetupPage() {
       const body =
         role === 'owner'
           ? { dogName, breed, pace, ownerName, photoUrl, schedule, quirks, weeklyGoalMiles: weeklyGoal }
-          : { runnerName, pace: runnerPace, typicalDistance, photoUrl, schedule };
+          : { runnerName, pace: runnerPace, typicalDistance, photoUrl, schedule, soloPace, personalBest };
 
       const res = await fetch('/api/profile', {
         method: 'POST',
@@ -111,7 +115,7 @@ export default function ProfileSetupPage() {
   if (!role) return null;
 
   return (
-    <div className="min-h-screen bg-oat pt-16 px-6 pb-12">
+    <div className="min-h-screen bg-oat pt-16 px-6 pb-28">
       <div className="max-w-sm mx-auto space-y-6">
         <h1 className="font-display text-[26px] text-soil leading-tight">
           {role === 'owner' ? 'Your dog\'s profile' : 'Your runner profile'}
@@ -185,8 +189,25 @@ export default function ProfileSetupPage() {
             <Field label="Your name">
               <input value={runnerName} onChange={(e) => setRunnerName(e.target.value)} className={inputCls} placeholder="e.g. Tom W." />
             </Field>
-            <Field label="Pace">
+            <Field label="Pace running with a dog">
               <PacePicker value={runnerPace} onChange={setRunnerPace} />
+              <p className="text-xs text-soil/45">This is what owners see when matching — your realistic pace with a dog alongside.</p>
+            </Field>
+            <Field label="Your personal running pace">
+              <input
+                value={soloPace}
+                onChange={(e) => setSoloPace(e.target.value)}
+                className={inputCls}
+                placeholder="e.g. 7:45 /mi"
+              />
+            </Field>
+            <Field label="Personal best">
+              <input
+                value={personalBest}
+                onChange={(e) => setPersonalBest(e.target.value)}
+                className={inputCls}
+                placeholder="e.g. 3:42 marathon, 18:30 5K"
+              />
             </Field>
             <Field label="Typical distance">
               <div className="flex flex-wrap gap-2">

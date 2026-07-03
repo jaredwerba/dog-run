@@ -51,13 +51,17 @@ export function buildIcs(invite: RunInvite): string {
   const start = bostonToUtc(invite.date, invite.time);
   const end = new Date(start.getTime() + (invite.durationMinutes ?? 60) * 60_000);
 
+  // METHOD:PUBLISH (not REQUEST) — this is a standalone file download, not an
+  // emailed invite transaction. REQUEST + ATTENDEE/RSVP makes Google Calendar's
+  // importer and several other clients silently reject or ignore the file.
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Go Dogs Boston//Run//EN',
-    'METHOD:REQUEST',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `UID:${invite.uid}@godogsboston`,
+    `UID:${invite.uid}@godogsboston.com`,
     `DTSTAMP:${icsStamp(new Date())}`,
     `DTSTART:${icsStamp(start)}`,
     `DTEND:${icsStamp(end)}`,
@@ -65,8 +69,10 @@ export function buildIcs(invite: RunInvite): string {
     `DESCRIPTION:${esc(invite.description)}`,
     `LOCATION:${esc(invite.location)}`,
     `ORGANIZER;CN=${esc(invite.organizer.name)}:mailto:${invite.organizer.email}`,
-    `ATTENDEE;CN=${esc(invite.attendee.name)};RSVP=TRUE;PARTSTAT=ACCEPTED:mailto:${invite.attendee.email}`,
+    `ATTENDEE;CN=${esc(invite.attendee.name)}:mailto:${invite.attendee.email}`,
     'STATUS:CONFIRMED',
+    'TRANSP:OPAQUE',
+    'SEQUENCE:0',
     'BEGIN:VALARM',
     'TRIGGER:-PT30M',
     'ACTION:DISPLAY',
@@ -75,5 +81,5 @@ export function buildIcs(invite: RunInvite): string {
     'END:VEVENT',
     'END:VCALENDAR',
   ];
-  return lines.join('\r\n');
+  return lines.join('\r\n') + '\r\n';
 }

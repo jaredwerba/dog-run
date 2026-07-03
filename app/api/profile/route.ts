@@ -57,16 +57,18 @@ export async function POST(req: NextRequest) {
         weekly_goal_miles = EXCLUDED.weekly_goal_miles
     `;
   } else {
-    const { runnerName, pace, typicalDistance, photoUrl } = body;
+    const { runnerName, pace, typicalDistance, photoUrl, personalBest, soloPace } = body;
     await sql`
-      INSERT INTO runner_profiles (user_id, runner_name, pace, typical_distance, contact, availability, photo_url, route, schedule)
-      VALUES (${session.userId}, ${runnerName}, ${pace}, ${typicalDistance}, '', '', ${photoUrl ?? null}, 'castle-island', ${scheduleJson}::jsonb)
+      INSERT INTO runner_profiles (user_id, runner_name, pace, typical_distance, contact, availability, photo_url, route, schedule, personal_best, solo_pace)
+      VALUES (${session.userId}, ${runnerName}, ${pace}, ${typicalDistance}, '', '', ${photoUrl ?? null}, 'castle-island', ${scheduleJson}::jsonb, ${personalBest ?? ''}, ${soloPace ?? ''})
       ON CONFLICT (user_id) DO UPDATE SET
         runner_name = EXCLUDED.runner_name,
         pace = EXCLUDED.pace,
         typical_distance = EXCLUDED.typical_distance,
         photo_url = EXCLUDED.photo_url,
-        schedule = EXCLUDED.schedule
+        schedule = EXCLUDED.schedule,
+        personal_best = EXCLUDED.personal_best,
+        solo_pace = EXCLUDED.solo_pace
     `;
   }
 

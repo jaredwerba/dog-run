@@ -13,6 +13,7 @@ interface Message {
   id: string;
   sender_id: string;
   content: string;
+  photo_url: string | null;
   created_at: string;
   read_at: string | null;
 }
@@ -115,6 +116,8 @@ function RunPlanner({
   const [reportNote, setReportNote] = useState('');
   const [wantRebook, setWantRebook] = useState(true);
   const [shareReview, setShareReview] = useState(true);
+  const [reportPhotoUrl, setReportPhotoUrl] = useState('');
+  const [uploadingReportPhoto, setUploadingReportPhoto] = useState(false);
 
   const active = runs.find(
     (r) =>
@@ -168,6 +171,18 @@ function RunPlanner({
     await onChanged();
   }
 
+  async function handleReportPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingReportPhoto(true);
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.url) setReportPhotoUrl(data.url);
+    setUploadingReportPhoto(false);
+  }
+
   async function submitReport() {
     if (!lastCompleted || busy) return;
     setBusy(true);
@@ -179,7 +194,8 @@ function RunPlanner({
         comment: reportNote,
         wantsRebook: wantRebook,
         milesActual: isOwner ? undefined : (reportMiles || lastCompleted.miles),
-        shareAsReview: isOwner ? shareReview : undefined,
+        shareAsReview: shareReview,
+        photoUrl: reportPhotoUrl || undefined,
       }),
     });
     if (wantRebook) {
@@ -200,6 +216,7 @@ function RunPlanner({
     }
     setReportNote('');
     setReportMiles('');
+    setReportPhotoUrl('');
     setBusy(false);
     await onChanged();
   }
@@ -410,6 +427,15 @@ function RunPlanner({
                   placeholder={isOwner ? `How was ${otherName} with your dog?` : 'How was it? e.g. Tank crushed it, zero pulling'}
                   className="w-full border border-soil/15 rounded-lg px-3 py-2 text-[13px] bg-white text-soil focus:outline-none focus:ring-2 focus:ring-pine"
                 />
+                <div className="flex items-center gap-3">
+                  {reportPhotoUrl && (
+                    <Image src={reportPhotoUrl} alt="Attached" width={44} height={44} className="rounded-lg w-11 h-11 object-cover" />
+                  )}
+                  <label className="text-[13px] text-pine font-bold hover:underline cursor-pointer">
+                    {uploadingReportPhoto ? 'Uploading…' : reportPhotoUrl ? 'Change photo' : '📷 Add a photo'}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleReportPhoto} disabled={uploadingReportPhoto} />
+                  </label>
+                </div>
                 <button
                   onClick={() => setWantRebook(!wantRebook)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors ${
@@ -421,19 +447,17 @@ function RunPlanner({
                   </span>
                   🔁 Book the same run next week
                 </button>
-                {isOwner && (
-                  <button
-                    onClick={() => setShareReview(!shareReview)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors ${
-                      shareReview ? 'border-pine bg-pine/10 text-pine' : 'border-soil/15 text-soil/55'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${shareReview ? 'border-pine bg-pine' : 'border-soil/30'}`}>
-                      {shareReview && <span className="text-oat text-[9px] leading-none">✓</span>}
-                    </span>
-                    💬 Share my comment on {otherName}&apos;s profile
-                  </button>
-                )}
+                <button
+                  onClick={() => setShareReview(!shareReview)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors ${
+                    shareReview ? 'border-pine bg-pine/10 text-pine' : 'border-soil/15 text-soil/55'
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${shareReview ? 'border-pine bg-pine' : 'border-soil/30'}`}>
+                    {shareReview && <span className="text-oat text-[9px] leading-none">✓</span>}
+                  </span>
+                  💬 Share my comment on {otherName}&apos;s profile
+                </button>
                 <motion.button
                   {...press}
                   onClick={() => void submitReport()}
@@ -500,7 +524,9 @@ export default function ThreadPage() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // The match moment: first time this browser sees a run confirmed, celebrate.
@@ -558,6 +584,27 @@ export default function ThreadPage() {
     await load();
   }
 
+  async function sendPhoto(file: File) {
+    if (uploadingPhoto) return;
+    setUploadingPhoto(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.url) {
+        await fetch(`/api/conversations/${id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: '', photoUrl: data.url }),
+        });
+        await load();
+      }
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   function handleKey(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
   }
@@ -578,7 +625,7 @@ export default function ThreadPage() {
   const milesTogether = Math.round(runsTogether.reduce((sum, r) => sum + (Number(r.miles) || 0), 0) * 10) / 10;
 
   return (
-    <div className="min-h-screen bg-oat flex flex-col pt-12">
+    <div className="min-h-screen bg-oat flex flex-col pt-12 pb-16">
       <MatchCelebration show={celebrate} onDone={() => setCelebrate(false)} />
 
       {/* Header */}
@@ -627,14 +674,29 @@ export default function ThreadPage() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={springBouncy}
                 style={{ originX: mine ? 1 : 0, originY: 1 }}
-                className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-sm ${
+                className={`max-w-[78%] rounded-2xl overflow-hidden text-sm ${
+                  msg.photo_url ? 'p-1.5' : 'px-3.5 py-2'
+                } ${
                   mine
                     ? 'bg-pine text-oat rounded-br-sm'
                     : 'bg-linen text-soil border border-soil/10 rounded-bl-sm'
                 }`}
               >
-                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                <p className={`font-data text-[9px] mt-0.5 ${mine ? 'text-oat/60' : 'text-soil/40'}`}>
+                {msg.photo_url && (
+                  <a href={msg.photo_url} target="_blank" rel="noopener noreferrer" className="block">
+                    <Image
+                      src={msg.photo_url}
+                      alt="Shared photo"
+                      width={260}
+                      height={260}
+                      className="rounded-xl w-full h-auto max-h-[280px] object-cover"
+                    />
+                  </a>
+                )}
+                {msg.content && (
+                  <p className={`whitespace-pre-wrap break-words ${msg.photo_url ? 'px-2 pt-1.5' : ''}`}>{msg.content}</p>
+                )}
+                <p className={`font-data text-[9px] mt-0.5 ${msg.photo_url ? 'px-2 pb-0.5' : ''} ${mine ? 'text-oat/60' : 'text-soil/40'}`}>
                   {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                 </p>
               </motion.div>
@@ -646,6 +708,34 @@ export default function ThreadPage() {
 
       {/* Input */}
       <div className="bg-linen border-t border-soil/10 px-4 py-3 flex gap-2 items-end">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void sendPhoto(file);
+            e.target.value = '';
+          }}
+        />
+        <motion.button
+          {...pressFirm}
+          onClick={() => fileRef.current?.click()}
+          disabled={uploadingPhoto}
+          aria-label="Attach a photo"
+          className="border border-soil/15 text-soil/60 hover:text-pine hover:border-pine/40 rounded-full w-10 h-10 flex items-center justify-center shrink-0 disabled:opacity-40 transition-colors bg-white"
+        >
+          {uploadingPhoto ? (
+            <span className="text-[11px]">…</span>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="18" height="15" rx="2" />
+              <circle cx="9" cy="10" r="1.6" />
+              <path d="M21 16l-5.5-5.5a2 2 0 0 0-2.83 0L4 19" />
+            </svg>
+          )}
+        </motion.button>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}

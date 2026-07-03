@@ -10,7 +10,6 @@ const PollenField = dynamic(() => import('@/components/PollenField'), { ssr: fal
 const TennisBall3D = dynamic(() => import('@/components/TennisBall3D'), { ssr: false });
 const JoggerDoodle = dynamic(() => import('@/components/JoggerDoodle'), { ssr: false });
 const ScruffyDog = dynamic(() => import('@/components/ScruffyDog'), { ssr: false });
-const ChaseScene = dynamic(() => import('@/components/ChaseScene'), { ssr: false });
 
 /* ── Shared fade-up-on-scroll props ────────────────────── */
 const fadeUp = {
@@ -173,8 +172,6 @@ function ForestHero() {
           hill="M0 240 L0 180 Q360 158 720 176 T1440 168 L1440 240 Z"
           className="h-full"
         />
-        {/* the welcome committee */}
-        <ScruffyDog className="absolute bottom-[2px] left-[5%] w-[110px] sm:w-[150px]" />
       </motion.div>
 
       {/* sunlit pollen — three.js */}
@@ -261,6 +258,15 @@ function ForestHero() {
         >
           FREE TO JOIN · BOSTON ONLY · FIRST RUNS IN PUBLIC PARKS
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.6 }}
+          className="mt-4 flex justify-center"
+        >
+          <ScruffyDog className="w-[100px] sm:w-[130px]" />
+        </motion.div>
       </div>
     </section>
   );
@@ -630,9 +636,6 @@ export default function Home() {
       <MotionConfig reducedMotion="user">
         <main className="min-h-screen bg-oat font-body text-soil">
           <ForestHero />
-
-          {/* ── Scroll-locked chase: dog vs. ball ────────── */}
-          <ChaseScene />
 
           {/* ── Under the canopy: phone demo ─────────────── */}
           <section className="relative bg-pine text-white px-6 py-20 sm:py-24 overflow-hidden">

@@ -23,12 +23,21 @@ interface DogProfile extends MatchInfo {
   photo_url?: string | null;
   weekly_goal_miles?: number | null;
   miles_this_week?: number;
+  review_count?: number;
 }
 
 function ledgerBadge(p: DogProfile): string | null {
   if (!p.weekly_goal_miles) return null;
   const remaining = Math.round((p.weekly_goal_miles - (p.miles_this_week ?? 0)) * 10) / 10;
   return remaining > 0 ? `Needs ${remaining} mi this week` : 'Weekly goal met 🎾';
+}
+
+function dogBadges(p: DogProfile): string[] {
+  const badges = matchBadges(p);
+  if (p.review_count) {
+    badges.push(`${p.review_count} runner comment${p.review_count === 1 ? '' : 's'}`);
+  }
+  return badges;
 }
 
 interface RunnerProfile extends MatchInfo {
@@ -80,6 +89,27 @@ export default function BrowsePage() {
   const [publicView, setPublicView] = useState<'dogs' | 'runners'>('dogs');
   const [loadError, setLoadError] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch('/api/favorites')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.ids) setFavoriteIds(new Set(d.ids)); })
+      .catch(() => {});
+  }, []);
+
+  async function toggleFavorite(targetId: string) {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(targetId)) next.delete(targetId); else next.add(targetId);
+      return next;
+    });
+    await fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetId }),
+    }).catch(() => {});
+  }
 
   // Restore the guest toggle from the URL (?view=runners survives back-button)
   useEffect(() => {
@@ -159,7 +189,7 @@ export default function BrowsePage() {
     : profiles.filter((p) => p.pace === filter);
 
   return (
-    <div className="min-h-screen bg-oat pt-16 pb-10 max-w-2xl mx-auto">
+    <div className="min-h-screen bg-oat pt-16 pb-28 max-w-2xl mx-auto">
       {/* Header — in public mode, track the toggle instantly */}
       <div className="px-4 mb-4">
         <p className="font-data text-[11px] tracking-[0.2em] text-clay mb-1">
@@ -167,8 +197,8 @@ export default function BrowsePage() {
         </p>
         <h1 className="font-display text-[24px] text-soil leading-tight mb-1">
           {publicMode
-            ? publicView === 'dogs' ? 'The dogs of Boston' : 'The runners of Boston'
-            : viewing === 'dogs' ? 'Dogs near you' : 'Runners near you'}
+            ? publicView === 'dogs' ? 'Boston Dogs Near You' : 'Boston Runners Near You'
+            : viewing === 'dogs' ? 'Boston Dogs Near You' : 'Boston Runners Near You'}
         </h1>
         <p className="text-sm text-soil/55">
           {publicMode
@@ -371,8 +401,10 @@ export default function BrowsePage() {
                   subtitle={p.breed}
                   tags={[{ label: 'Pace', value: PACE_LABELS[p.pace] ?? p.pace }]}
                   viewing="dogs"
-                  badges={[...(ledgerBadge(p) ? [ledgerBadge(p)!] : []), ...matchBadges(p)]}
+                  badges={[...(ledgerBadge(p) ? [ledgerBadge(p)!] : []), ...dogBadges(p)]}
                   href={publicMode ? `/register?meet=${encodeURIComponent(p.dog_name)}&side=dogs` : undefined}
+                  favorited={favoriteIds.has(p.id)}
+                  onToggleFavorite={publicMode ? undefined : () => toggleFavorite(p.id)}
                 />
               ) : (
                 <ProfileCard
@@ -387,6 +419,8 @@ export default function BrowsePage() {
                   viewing="runners"
                   badges={runnerBadges(p as RunnerProfile)}
                   href={publicMode ? `/register?meet=${encodeURIComponent((p as RunnerProfile).runner_name)}&side=runners` : undefined}
+                  favorited={favoriteIds.has((p as RunnerProfile).id)}
+                  onToggleFavorite={publicMode ? undefined : () => toggleFavorite((p as RunnerProfile).id)}
                 />
               )}
             </motion.div>

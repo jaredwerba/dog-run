@@ -37,7 +37,7 @@ export async function GET(
     const uid = session.userId;
     // Owner comments — with author name, dog, and runs-together count
     const reviews = await sql`
-      SELECT rr.comment, rr.created_at, rr.author_id,
+      SELECT rr.comment, rr.created_at, rr.author_id, rr.photo_url,
              dp.owner_name, dp.dog_name,
              (
                SELECT COUNT(*) FROM runs r2
@@ -84,6 +84,42 @@ export async function GET(
       WHERE u.id = ${id}
     `;
     if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json({ profile: rows[0], type: 'dog', mySchedule });
+
+    const uid = session.userId;
+    // Runner comments about the dog — with author name and runs-together count
+    const reviews = await sql`
+      SELECT dr.comment, dr.created_at, dr.author_id, dr.photo_url,
+             rp.runner_name,
+             (
+               SELECT COUNT(*) FROM runs r2
+               JOIN conversations c2 ON c2.id = r2.conversation_id
+               WHERE c2.owner_id = ${id} AND c2.runner_id = dr.author_id
+                 AND r2.status = 'confirmed' AND r2.run_date <= now()::date
+             )::int AS runs_together
+      FROM dog_reviews dr
+      LEFT JOIN runner_profiles rp ON rp.user_id = dr.author_id
+      WHERE dr.dog_owner_id = ${id}
+      ORDER BY dr.created_at DESC
+      LIMIT 30
+    `;
+    const canReview = (
+      await sql`
+        SELECT 1 FROM runs r3
+        JOIN conversations c3 ON c3.id = r3.conversation_id
+        WHERE c3.runner_id = ${uid} AND c3.owner_id = ${id}
+          AND r3.status = 'confirmed' AND r3.run_date <= now()::date
+        LIMIT 1
+      `
+    ).length > 0;
+    const myReview = reviews.find((rv) => rv.author_id === uid)?.comment ?? '';
+
+    return NextResponse.json({
+      profile: rows[0],
+      type: 'dog',
+      mySchedule,
+      reviews: reviews.map(({ author_id, ...rest }) => ({ ...rest, mine: author_id === uid })),
+      canReview,
+      myReview,
+    });
   }
 }

@@ -126,7 +126,7 @@ export default function RunsPage() {
     data.upcoming.length + data.awaitingMe.length + data.awaitingThem.length + data.past.length > 0;
 
   return (
-    <div className="min-h-screen bg-oat pt-16 pb-12">
+    <div className="min-h-screen bg-oat pt-16 pb-28">
       <div className="max-w-sm mx-auto px-4 space-y-5">
         <div>
           <p className="font-data text-[11px] tracking-[0.2em] text-clay mb-1">YOUR WEEK</p>

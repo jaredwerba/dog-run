@@ -142,6 +142,42 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS runner_reviews_runner_id_idx ON runner_reviews(runner_id)`;
 
+  // Photo attachments in chat
+  await sql`ALTER TABLE messages ADD COLUMN IF NOT EXISTS photo_url TEXT`;
+  await sql`ALTER TABLE messages ALTER COLUMN content DROP NOT NULL`;
+
+  // Runner running-specific fields
+  await sql`ALTER TABLE runner_profiles ADD COLUMN IF NOT EXISTS personal_best TEXT DEFAULT ''`;
+  await sql`ALTER TABLE runner_profiles ADD COLUMN IF NOT EXISTS solo_pace TEXT DEFAULT ''`;
+
+  // Dog reviews — runner comments on the dog, no scores (mirrors runner_reviews)
+  await sql`
+    CREATE TABLE IF NOT EXISTS dog_reviews (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      dog_owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      author_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      comment TEXT NOT NULL,
+      photo_url TEXT,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(dog_owner_id, author_id)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS dog_reviews_owner_id_idx ON dog_reviews(dog_owner_id)`;
+  await sql`ALTER TABLE runner_reviews ADD COLUMN IF NOT EXISTS photo_url TEXT`;
+  await sql`ALTER TABLE run_feedback ADD COLUMN IF NOT EXISTS photo_url TEXT`;
+
+  // Favorites — heart a dog or runner profile
+  await sql`
+    CREATE TABLE IF NOT EXISTS favorites (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      target_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(user_id, target_id)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS favorites_user_id_idx ON favorites(user_id)`;
+
   console.log('Migrations complete.');
 }
 

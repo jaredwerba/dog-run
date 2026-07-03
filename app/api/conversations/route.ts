@@ -40,7 +40,10 @@ export async function GET() {
     LEFT JOIN dog_profiles    dp ON dp.user_id = c.owner_id
     LEFT JOIN runner_profiles rp ON rp.user_id = c.runner_id
     LEFT JOIN LATERAL (
-      SELECT content, created_at FROM messages
+      SELECT
+        CASE WHEN content = '' AND photo_url IS NOT NULL THEN '📷 Photo' ELSE content END AS content,
+        created_at
+      FROM messages
       WHERE conversation_id = c.id
       ORDER BY created_at DESC LIMIT 1
     ) lm ON true

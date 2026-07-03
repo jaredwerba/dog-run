@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Bevan, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
+import BottomNav from "@/components/BottomNav";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const bevan = Bevan({
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col antialiased">
         <NavBar />
         {children}
+        <BottomNav />
       </body>
     </html>
   );

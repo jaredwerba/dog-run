@@ -39,7 +39,7 @@ export default function MessagesPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-soil/50 text-sm">Loading…</div>;
 
   return (
-    <div className="min-h-screen bg-oat pt-14">
+    <div className="min-h-screen bg-oat pt-14 pb-24">
       <div className="max-w-sm mx-auto px-4 py-5">
         <h1 className="font-display text-[24px] text-soil mb-4">Messages</h1>
 

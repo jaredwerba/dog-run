@@ -12,9 +12,23 @@ interface Props {
   badges?: string[];
   /* Override destination (e.g. guests get funneled to /register) */
   href?: string;
+  /* Heart / favorite — omit onToggleFavorite to hide the heart entirely */
+  favorited?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewing, badges = [], href }: Props) {
+export default function ProfileCard({
+  id,
+  photoUrl,
+  title,
+  subtitle,
+  tags,
+  viewing,
+  badges = [],
+  href,
+  favorited,
+  onToggleFavorite,
+}: Props) {
   return (
     <Link
       href={href ?? `/profile/${id}`}
@@ -27,6 +41,30 @@ export default function ProfileCard({ id, photoUrl, title, subtitle, tags, viewi
           <div className="flex items-center justify-center h-full text-6xl">
             {viewing === 'dogs' ? '🐶' : '🏃'}
           </div>
+        )}
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite();
+            }}
+            aria-label={favorited ? 'Remove favorite' : 'Add favorite'}
+            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-soil/40 backdrop-blur-sm flex items-center justify-center hover:bg-soil/55 transition-colors"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill={favorited ? '#bd6b44' : 'none'}
+              stroke={favorited ? '#bd6b44' : '#f6eedd'}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+            </svg>
+          </button>
         )}
         {badges.length > 0 && (
           <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">

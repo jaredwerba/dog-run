@@ -2,11 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { type Schedule } from '@/components/SchedulePicker';
 import { spring, press, pressFirm } from '@/components/ux';
+
+const ScruffyDog = dynamic(() => import('@/components/ScruffyDog'), { ssr: false });
+const RunnerLegs = dynamic(() => import('@/components/RunnerLegs'), { ssr: false });
 
 interface Profile {
   id: string;
@@ -22,6 +26,8 @@ interface Profile {
   quirks?: string | null;
   weekly_goal_miles?: number | null;
   miles_this_week?: number;
+  solo_pace?: string | null;
+  personal_best?: string | null;
 }
 
 const PACE_LABEL: Record<string, string> = {
@@ -54,8 +60,10 @@ const LOCATIONS = [
 interface Review {
   comment: string;
   created_at: string;
+  photo_url?: string | null;
   owner_name?: string | null;
   dog_name?: string | null;
+  runner_name?: string | null;
   runs_together: number;
   mine: boolean;
 }
@@ -77,6 +85,36 @@ export default function ProfilePage() {
   const [reviewDraft, setReviewDraft] = useState('');
   const [reviewOpen, setReviewOpen] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
+  const [reviewPhotoUrl, setReviewPhotoUrl] = useState('');
+  const [uploadingReviewPhoto, setUploadingReviewPhoto] = useState(false);
+  const [favorited, setFavorited] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/favorites')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.ids?.includes(id)) setFavorited(true); })
+      .catch(() => {});
+  }, [id]);
+
+  async function toggleFavorite() {
+    setFavorited((f) => !f);
+    await fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetId: id }),
+    }).catch(() => {});
+  }
+
+  async function shareProfile() {
+    const url = `${window.location.origin}/p/${id}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Go Dogs Boston', url }); return; } catch { /* cancelled */ }
+    }
+    await navigator.clipboard.writeText(url);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  }
 
   const load = useCallback(() => {
     fetch(`/api/profile/${id}`)
@@ -97,13 +135,25 @@ export default function ProfilePage() {
     load();
   }, [load]);
 
+  async function handleReviewPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingReviewPhoto(true);
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.url) setReviewPhotoUrl(data.url);
+    setUploadingReviewPhoto(false);
+  }
+
   async function saveReview() {
     if (savingReview) return;
     setSavingReview(true);
     await fetch('/api/reviews', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ runnerId: id, comment: reviewDraft }),
+      body: JSON.stringify({ targetId: id, comment: reviewDraft, photoUrl: reviewPhotoUrl || undefined }),
     });
     setSavingReview(false);
     setReviewOpen(false);
@@ -177,7 +227,7 @@ export default function ProfilePage() {
   const hasSchedule = Object.values(schedule).some((slots) => slots.length > 0);
 
   return (
-    <div className="min-h-screen bg-oat pt-12">
+    <div className="min-h-screen bg-oat pt-12 pb-24">
       {/* Hero */}
       <div className="relative h-52 bg-gradient-to-br from-fern to-pine overflow-hidden">
         {profile.photo_url ? (
@@ -189,6 +239,42 @@ export default function ProfilePage() {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-pine-deep/70 to-transparent" />
 
+        {/* Heart + share — top right */}
+        <div className="absolute top-4 right-4 flex gap-2">
+          <button
+            onClick={shareProfile}
+            aria-label="Share profile"
+            className="w-9 h-9 rounded-full bg-soil/40 backdrop-blur-sm flex items-center justify-center hover:bg-soil/55 transition-colors"
+          >
+            {shareCopied ? (
+              <span className="text-oat text-[10px] font-bold">✓</span>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f6eedd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={toggleFavorite}
+            aria-label={favorited ? 'Remove favorite' : 'Add favorite'}
+            className="w-9 h-9 rounded-full bg-soil/40 backdrop-blur-sm flex items-center justify-center hover:bg-soil/55 transition-colors"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill={favorited ? '#bd6b44' : 'none'}
+              stroke={favorited ? '#bd6b44' : '#f6eedd'}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+            </svg>
+          </button>
+        </div>
+
         {/* Name badge overlapping bottom of hero */}
         <div className="absolute bottom-4 left-5 right-5 px-5 py-3 rounded-xl bg-pine-deep/60 backdrop-blur-md border border-white/10">
           <h1 className="font-display text-[22px] text-white leading-tight">{name}</h1>
@@ -198,6 +284,15 @@ export default function ProfilePage() {
       </div>
 
       <div className="px-5 py-5 max-w-sm mx-auto space-y-4">
+        {/* A little life on the page */}
+        <div className="flex justify-center py-2">
+          {type === 'dog' ? (
+            <ScruffyDog className="w-[130px]" />
+          ) : (
+            <RunnerLegs className="w-[90px]" />
+          )}
+        </div>
+
         {/* Weekly mileage ledger */}
         {type === 'dog' && profile.weekly_goal_miles ? (
           <motion.div
@@ -239,7 +334,13 @@ export default function ProfilePage() {
         {/* Details */}
         <div className="bg-linen rounded-xl border border-soil/10 divide-y divide-soil/10">
           <Row icon="🗺️" label="Route" value="Castle Island, South Boston" />
-          <Row icon="👟" label="Pace" value={PACE_LABEL[profile.pace] ?? profile.pace} />
+          <Row icon="👟" label={type === 'runner' ? 'Pace with a dog' : 'Pace'} value={PACE_LABEL[profile.pace] ?? profile.pace} />
+          {type === 'runner' && profile.solo_pace?.trim() && (
+            <Row icon="🏃" label="Personal pace" value={profile.solo_pace.trim()} />
+          )}
+          {type === 'runner' && profile.personal_best?.trim() && (
+            <Row icon="🏅" label="Personal best" value={profile.personal_best.trim()} />
+          )}
           {type === 'dog' && profile.quirks?.trim() && (
             <Row icon="🐾" label="Good to know" value={profile.quirks.trim()} />
           )}
@@ -370,17 +471,29 @@ export default function ProfilePage() {
           )}
         </AnimatePresence>
 
-        {/* What owners say — comments, never scores */}
-        {type === 'runner' && (reviews.length > 0 || canReview) && (
+        {/* What the other side says — comments (+ optional photo), never scores */}
+        {(reviews.length > 0 || canReview) && (
           <div className="space-y-2 pt-2">
-            <h2 className="font-data text-[11px] tracking-[0.18em] text-clay">WHAT OWNERS SAY</h2>
+            <h2 className="font-data text-[11px] tracking-[0.18em] text-clay">
+              {type === 'runner' ? 'WHAT OWNERS SAY' : 'WHAT RUNNERS SAY'}
+            </h2>
             {reviews.map((rv) => (
-              <figure key={`${rv.owner_name}-${rv.created_at}`} className="bg-linen rounded-xl border border-soil/10 p-4">
+              <figure key={`${rv.owner_name ?? rv.runner_name}-${rv.created_at}`} className="bg-linen rounded-xl border border-soil/10 p-4">
+                {rv.photo_url && (
+                  <Image
+                    src={rv.photo_url}
+                    alt="Run photo"
+                    width={400}
+                    height={260}
+                    className="rounded-lg w-full h-auto max-h-[220px] object-cover mb-3"
+                  />
+                )}
                 <blockquote className="text-[14px] text-soil/80 leading-relaxed">“{rv.comment}”</blockquote>
                 <figcaption className="text-[12px] text-soil/50 mt-2">
                   <span className="font-bold text-soil/70">
-                    {rv.owner_name ?? 'An owner'}
-                    {rv.dog_name ? ` — ${rv.dog_name}'s owner` : ''}
+                    {type === 'runner'
+                      ? `${rv.owner_name ?? 'An owner'}${rv.dog_name ? ` — ${rv.dog_name}'s owner` : ''}`
+                      : `${rv.runner_name ?? 'A runner'}`}
                   </span>
                   {rv.runs_together > 0 && <> · {rv.runs_together} run{rv.runs_together === 1 ? '' : 's'} together</>}
                   {rv.mine && <span className="text-clay"> · yours</span>}
@@ -406,9 +519,22 @@ export default function ProfilePage() {
                   value={reviewDraft}
                   onChange={(e) => setReviewDraft(e.target.value)}
                   rows={3}
-                  placeholder={`How was running with ${name}? Other owners will read this.`}
+                  placeholder={
+                    type === 'runner'
+                      ? `How was running with ${name}? Other owners will read this.`
+                      : `How was ${name} on the run? Other runners will read this.`
+                  }
                   className="w-full border border-soil/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pine resize-none bg-white text-soil"
                 />
+                <div className="flex items-center gap-3">
+                  {reviewPhotoUrl && (
+                    <Image src={reviewPhotoUrl} alt="Attached" width={48} height={48} className="rounded-lg w-12 h-12 object-cover" />
+                  )}
+                  <label className="text-sm text-pine font-bold hover:underline cursor-pointer">
+                    {uploadingReviewPhoto ? 'Uploading…' : reviewPhotoUrl ? 'Change photo' : '📷 Add a photo'}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleReviewPhoto} disabled={uploadingReviewPhoto} />
+                  </label>
+                </div>
                 <div className="flex gap-2">
                   <motion.button
                     {...press}
