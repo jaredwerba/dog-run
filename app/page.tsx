@@ -1026,8 +1026,8 @@ export default function Home() {
               <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <p className="font-data text-[12px] text-white/35">MADE IN BOSTON · © 2026 GO DOGS BOSTON 🎾</p>
                 <div className="flex gap-5 font-data text-[12px] text-white/35">
-                  <Link href="/register" className="hover:text-white/70 transition-colors">TERMS</Link>
-                  <Link href="/register" className="hover:text-white/70 transition-colors">PRIVACY</Link>
+                  <Link href="/terms" className="hover:text-white/70 transition-colors">TERMS</Link>
+                  <Link href="/privacy" className="hover:text-white/70 transition-colors">PRIVACY</Link>
                 </div>
               </div>
             </div>

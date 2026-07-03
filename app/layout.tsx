@@ -18,10 +18,28 @@ const plexMono = IBM_Plex_Mono({
   variable: "--font-plex-mono",
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.rundog.boston";
+const TITLE = "Go Dogs Boston 🎾 — Runners and high-energy dogs, matched";
+const DESCRIPTION =
+  "Go Dogs Boston 🎾 matches local runners with high-energy dogs and their owners. Runners get a training partner. Dogs get their miles.";
+
 export const metadata: Metadata = {
-  title: "Go Dogs Boston 🎾 — Runners and high-energy dogs, matched",
-  description:
-    "Go Dogs Boston 🎾 matches local runners with high-energy dogs and their owners. Runners get a training partner. Dogs get their miles.",
+  metadataBase: new URL(APP_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: APP_URL,
+    siteName: "Go Dogs Boston",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

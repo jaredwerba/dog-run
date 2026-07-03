@@ -26,6 +26,10 @@ export default function ProfileSetupPage() {
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const [schedule, setSchedule] = useState<Schedule>({});
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const [dogName, setDogName] = useState('');
   const [breed, setBreed] = useState('');
@@ -109,6 +113,19 @@ export default function ProfileSetupPage() {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/account', { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete account');
+      router.push('/');
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete account');
+      setDeleting(false);
     }
   }
 
@@ -242,6 +259,50 @@ export default function ProfileSetupPage() {
         >
           {saving ? 'Saving…' : 'Save profile'}
         </motion.button>
+
+        {/* Danger zone */}
+        <div className="mt-12 pt-8 border-t border-soil/10 space-y-3">
+          <h2 className="font-bold text-clay-deep">Leaving the pack</h2>
+          {!confirmingDelete ? (
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="text-sm font-bold text-clay-deep hover:underline"
+            >
+              Delete my account
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-soil/70 leading-relaxed">
+                This permanently removes your profile, messages, reviews, run history,
+                and any photos you&apos;ve uploaded. It can&apos;t be undone.
+              </p>
+              <Field label="Type DELETE to confirm">
+                <input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  className={`${inputCls} border-clay-deep/40 focus:ring-clay-deep`}
+                  placeholder="DELETE"
+                />
+              </Field>
+              {deleteError && <p className="text-clay-deep text-sm font-medium">{deleteError}</p>}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={confirmText !== 'DELETE' || deleting}
+                  className="flex-1 border-2 border-clay-deep text-clay-deep hover:bg-clay-deep hover:text-oat font-bold py-3 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-clay-deep text-[15px] transition-colors"
+                >
+                  {deleting ? 'Deleting…' : 'Permanently delete my account'}
+                </button>
+                <button
+                  onClick={() => { setConfirmingDelete(false); setConfirmText(''); setDeleteError(''); }}
+                  className="px-4 text-sm font-medium text-soil/50 hover:text-soil/80"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
