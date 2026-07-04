@@ -12,6 +12,23 @@ export default function BottomNav() {
   const [signedIn, setSignedIn] = useState(false);
   const [unread, setUnread] = useState(0);
   const [pendingRuns, setPendingRuns] = useState(0);
+  const [shared, setShared] = useState(false);
+
+  // Same share payload as the browse page's "Share Go Dogs Boston" button
+  async function share() {
+    const data = {
+      title: 'Go Dogs Boston 🎾',
+      text: 'Boston runners + high-energy dogs, matched for runs. Free to join.',
+      url: 'https://www.rundog.boston',
+    };
+    if (navigator.share) {
+      try { await navigator.share(data); } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(data.url);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
+  }
 
   useEffect(() => {
     fetch('/api/me').then((r) => r.json()).then((d) => setSignedIn(Boolean(d.user)));
@@ -35,7 +52,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-linen border-t border-soil/10 pb-[env(safe-area-inset-bottom)]">
-      <div className="max-w-sm mx-auto grid grid-cols-4 items-end px-4 py-2">
+      <div className="max-w-sm mx-auto grid grid-cols-5 items-end px-3 py-2">
         {/* Messages — left; a tennis ball rolls in when something's unread */}
         <Link
           href="/messages"
@@ -103,6 +120,18 @@ export default function BottomNav() {
           </span>
           <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-pine' : 'text-soil/45'}`}>Home</span>
         </Link>
+
+        {/* Share — spread the word */}
+        <button
+          onClick={() => void share()}
+          className="relative flex flex-col items-center gap-0.5 py-1 text-soil/45 hover:text-soil/70 transition-colors"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 15 V3 M8 6.5 L12 3 l4 3.5" />
+            <path d="M8 11 H6 a2 2 0 0 0 -2 2 v6 a2 2 0 0 0 2 2 h12 a2 2 0 0 0 2 -2 v-6 a2 2 0 0 0 -2 -2 h-2" />
+          </svg>
+          <span className="text-[10px] font-medium">{shared ? 'Copied ✓' : 'Share'}</span>
+        </button>
 
         {/* Browse — far right; discover dogs (runners) or runners (owners) */}
         <Link
