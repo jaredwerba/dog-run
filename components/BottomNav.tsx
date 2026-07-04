@@ -36,21 +36,31 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-linen border-t border-soil/10 pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-sm mx-auto grid grid-cols-4 items-end px-4 py-2">
-        {/* Browse — discover dogs (runners) or runners (owners) */}
+        {/* Messages — left; a tennis ball rolls in when something's unread */}
         <Link
-          href="/browse"
+          href="/messages"
           className={`relative flex flex-col items-center gap-0.5 py-1 transition-colors ${
-            isActive('/browse') ? 'text-pine' : 'text-soil/45 hover:text-soil/70'
+            isActive('/messages') ? 'text-pine' : 'text-soil/45 hover:text-soil/70'
           }`}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="10.5" cy="10.5" r="6.5" />
-            <path d="M20 20 L15.2 15.2" />
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span className="text-[10px] font-medium">Browse</span>
+          <span className="text-[10px] font-medium">Messages</span>
+          {unread > 0 && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 15 }}
+              className="absolute -top-1 left-[54%] text-[13px] leading-none"
+              aria-label={`${unread} unread message${unread === 1 ? '' : 's'}`}
+            >
+              🎾
+            </motion.span>
+          )}
         </Link>
 
-        {/* Calendar — left */}
+        {/* Calendar */}
         <Link
           href="/runs"
           className={`relative flex flex-col items-center gap-0.5 py-1 transition-colors ${
@@ -94,27 +104,18 @@ export default function BottomNav() {
           <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-pine' : 'text-soil/45'}`}>Home</span>
         </Link>
 
-        {/* Messages — right */}
+        {/* Browse — far right; discover dogs (runners) or runners (owners) */}
         <Link
-          href="/messages"
+          href="/browse"
           className={`relative flex flex-col items-center gap-0.5 py-1 transition-colors ${
-            isActive('/messages') ? 'text-pine' : 'text-soil/45 hover:text-soil/70'
+            isActive('/browse') ? 'text-pine' : 'text-soil/45 hover:text-soil/70'
           }`}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="M20 20 L15.2 15.2" />
           </svg>
-          <span className="text-[10px] font-medium">Messages</span>
-          {unread > 0 && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 15 }}
-              className="absolute top-0 left-[22%] bg-clay text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
-            >
-              {unread > 9 ? '9+' : unread}
-            </motion.span>
-          )}
+          <span className="text-[10px] font-medium">Browse</span>
         </Link>
       </div>
     </nav>
