@@ -135,6 +135,108 @@ export async function notifyRunProposed(args: {
   });
 }
 
+/* A runner left words/a photo about the dog — deliver that payoff to the owner */
+export async function notifyDogLoved(args: {
+  to: string;
+  ownerName: string;
+  runnerName: string;
+  dogName: string;
+  comment: string;
+  photoUrl: string | null;
+  conversationId: string;
+}): Promise<void> {
+  const commentHtml = args.comment
+    ? `<p style="background:#f6eedd;border-left:3px solid #bd6b44;padding:10px 14px;border-radius:6px;">&ldquo;${args.comment}&rdquo;</p>`
+    : '';
+  const photoHtml = args.photoUrl
+    ? `<img src="${args.photoUrl}" alt="${args.dogName} on a run" style="margin-top:12px;border-radius:10px;max-width:100%;border:1px solid rgba(54,43,31,0.12);" />`
+    : '';
+  await send({
+    to: args.to,
+    subject: `${args.runnerName} ran with ${args.dogName} today 🐾`,
+    heading: `${args.runnerName} loved running with ${args.dogName}`,
+    bodyHtml: `<p>Hi ${args.ownerName},</p>
+      <p><strong>${args.runnerName}</strong> just wrapped a run with <strong>${args.dogName}</strong> and left a few words:</p>
+      ${commentHtml}
+      ${photoHtml}
+      <p>Nice work, ${args.dogName}. 🎾</p>`,
+    cta: { label: 'See it in the app', url: threadUrl(args.conversationId) },
+  });
+}
+
+/* An owner praised the runner — recognition shouldn't be silent either */
+export async function notifyRunnerReviewed(args: {
+  to: string;
+  runnerId: string;
+  runnerName: string;
+  ownerName: string;
+  dogName: string;
+  comment: string;
+  photoUrl: string | null;
+}): Promise<void> {
+  const commentHtml = args.comment
+    ? `<p style="background:#f6eedd;border-left:3px solid #2f4f38;padding:10px 14px;border-radius:6px;">&ldquo;${args.comment}&rdquo;</p>`
+    : '';
+  const photoHtml = args.photoUrl
+    ? `<img src="${args.photoUrl}" alt="Run photo" style="margin-top:12px;border-radius:10px;max-width:100%;border:1px solid rgba(54,43,31,0.12);" />`
+    : '';
+  await send({
+    to: args.to,
+    subject: `${args.ownerName} left you a note 🐾`,
+    heading: `${args.dogName}'s owner said something nice`,
+    bodyHtml: `<p>Hi ${args.runnerName},</p>
+      <p><strong>${args.ownerName}</strong> (${args.dogName}'s owner) left a comment on your profile:</p>
+      ${commentHtml}
+      ${photoHtml}`,
+    cta: { label: 'See your profile', url: `${APP_URL}/profile/${args.runnerId}` },
+  });
+}
+
+/* A dog hit its weekly mileage goal — a win that belongs to both sides */
+export async function notifyGoalHit(args: {
+  to: string;
+  recipientName: string;
+  dogName: string;
+  goalMiles: number;
+  side: 'owner' | 'runner';
+  conversationId: string;
+}): Promise<void> {
+  const body =
+    args.side === 'owner'
+      ? `<p>Hi ${args.recipientName},</p>
+         <p><strong>${args.dogName}</strong> just crossed <strong>${args.goalMiles} miles</strong> this week. You and your runners got ${args.dogName} there — that&rsquo;s a good week.</p>
+         <p>🎾</p>`
+      : `<p>Hi ${args.recipientName},</p>
+         <p>You helped <strong>${args.dogName}</strong> cross the line this week — <strong>${args.goalMiles} miles</strong>, done. 🎾</p>
+         <p>That&rsquo;s exactly what this is all about.</p>`;
+  await send({
+    to: args.to,
+    subject: `${args.dogName} hit the week 🎾`,
+    heading: `${args.dogName} hit ${args.goalMiles} miles this week`,
+    bodyHtml: body,
+    cta: { label: 'See the run', url: threadUrl(args.conversationId) },
+  });
+}
+
+/* Mid-week: a dog is close to its goal but not there yet — a gentle owner nudge */
+export async function notifyMidweekNudge(args: {
+  to: string;
+  ownerName: string;
+  dogName: string;
+  remainingMiles: number;
+  goalMiles: number;
+}): Promise<void> {
+  const miles = args.remainingMiles % 1 === 0 ? String(args.remainingMiles) : args.remainingMiles.toFixed(1);
+  await send({
+    to: args.to,
+    subject: `${args.dogName} is ${miles} miles short this week 🐾`,
+    heading: 'A weekend run would do it',
+    bodyHtml: `<p>Hi ${args.ownerName},</p>
+      <p><strong>${args.dogName}</strong> is <strong>${miles} miles</strong> from ${args.goalMiles} this week. A Saturday run would close the gap — want to line one up?</p>`,
+    cta: { label: 'Find a run', url: `${APP_URL}/runs` },
+  });
+}
+
 const mapsUrl = (location: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
 

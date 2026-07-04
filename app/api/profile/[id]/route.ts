@@ -63,6 +63,15 @@ export async function GET(
     ).length > 0;
     const myReview = reviews.find((rv) => rv.author_id === uid)?.comment ?? '';
 
+    // Soft credibility signal: how many Boston dogs this runner has run with
+    const dogsRunWith = (
+      await sql`
+        SELECT COUNT(DISTINCT c.owner_id)::int AS n
+        FROM runs r JOIN conversations c ON c.id = r.conversation_id
+        WHERE c.runner_id = ${id} AND r.status = 'confirmed' AND r.run_date <= ${today}
+      `
+    )[0].n as number;
+
     return NextResponse.json({
       profile: rows[0],
       type: 'runner',
@@ -70,6 +79,7 @@ export async function GET(
       canReview,
       myReview,
       mySchedule,
+      dogsRunWith,
     });
   } else {
     const weekStart = bostonWeekStart();

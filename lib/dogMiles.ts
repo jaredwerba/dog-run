@@ -58,3 +58,43 @@ export function bostonWeekStart(): string {
   d.setUTCDate(d.getUTCDate() - Math.max(idx, 0));
   return d.toISOString().slice(0, 10);
 }
+
+/* Shift a YYYY-MM-DD date by whole days (noon-anchored to dodge DST edges) */
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/*
+ * Consecutive most-recent weeks a dog met its goal, ending at the current week.
+ * The in-progress current week counts if already met, but not meeting it yet does
+ * NOT break the streak (there's still time). A week with no runs is a miss.
+ *
+ * Note: judged against the *current* goal — historical goals aren't stored, so
+ * raising the goal can retroactively shrink the streak. Acceptable for a gentle,
+ * secondary number; an immutable streak would need a weekly_goal_history table.
+ */
+export function weeksAtGoal(
+  weekMiles: { weekStart: string; miles: number }[],
+  goal: number | null,
+  currentWeekStart: string
+): number {
+  if (!goal || goal <= 0) return 0;
+  const byWeek = new Map(weekMiles.map((w) => [w.weekStart, w.miles]));
+  let streak = 0;
+  if ((byWeek.get(currentWeekStart) ?? 0) >= goal) streak++;
+  let cursor = addDays(currentWeekStart, -7);
+  while ((byWeek.get(cursor) ?? 0) >= goal) {
+    streak++;
+    cursor = addDays(cursor, -7);
+  }
+  return streak;
+}
+
+/* Whether a mid-week nudge is warranted: goal set, close but not there yet */
+export function shouldNudge(args: { goal: number | null; milesThisWeek: number }): boolean {
+  if (!args.goal || args.goal <= 0) return false;
+  const remaining = args.goal - args.milesThisWeek;
+  return remaining > 0 && remaining <= args.goal * 0.4;
+}

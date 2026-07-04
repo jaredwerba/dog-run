@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getConvParticipants } from '@/lib/participants';
-import { notifyRunReminder, notifyRunFollowup } from '@/lib/email';
+import { notifyRunReminder, notifyRunFollowup, notifyMidweekNudge } from '@/lib/email';
 import { formatRunLabel } from '@/lib/ics';
-import { bostonToday } from '@/lib/dogMiles';
+import { bostonToday, bostonWeekStart, shouldNudge } from '@/lib/dogMiles';
 
 export const maxDuration = 60;
 
@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   const today = bostonToday();
   let reminders = 0;
   let followups = 0;
+  let nudges = 0;
 
   // ── Reminders: confirmed runs happening today ──────────
   const dueToday = await sql`
@@ -86,5 +87,42 @@ export async function GET(req: NextRequest) {
     followups++;
   }
 
-  return NextResponse.json({ ok: true, today, reminders, followups });
+  // ── Mid-week nudge: Fridays only, for dogs close to their weekly goal ──
+  // One gentle nudge per dog per week, only when a weekend run would realistically
+  // close the gap (within ~40% of goal) — never for dogs miles behind or already done.
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' }).format(new Date());
+  if (weekday === 'Fri') {
+    const weekStart = bostonWeekStart();
+    const dogs = await sql`
+      SELECT dp.user_id, dp.dog_name, dp.owner_name, dp.weekly_goal_miles, u.username AS owner_email,
+        (
+          SELECT COALESCE(SUM(r.miles), 0)::float FROM runs r
+          JOIN conversations c ON c.id = r.conversation_id
+          WHERE c.owner_id = dp.user_id AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
+        ) AS miles_this_week
+      FROM dog_profiles dp
+      JOIN users u ON u.id = dp.user_id
+      WHERE dp.weekly_goal_miles IS NOT NULL
+        AND (dp.nudge_sent_week IS NULL OR dp.nudge_sent_week <> ${weekStart})
+    `;
+    for (const dog of dogs) {
+      const goal = dog.weekly_goal_miles as number;
+      const milesThisWeek = Number(dog.miles_this_week);
+      if (!shouldNudge({ goal, milesThisWeek })) continue;
+      const email = dog.owner_email as string;
+      if (email?.includes('@')) {
+        await notifyMidweekNudge({
+          to: email,
+          ownerName: (dog.owner_name as string) ?? 'there',
+          dogName: (dog.dog_name as string) ?? 'your dog',
+          remainingMiles: Math.round((goal - milesThisWeek) * 10) / 10,
+          goalMiles: goal,
+        });
+      }
+      await sql`UPDATE dog_profiles SET nudge_sent_week = ${weekStart} WHERE user_id = ${dog.user_id}`;
+      nudges++;
+    }
+  }
+
+  return NextResponse.json({ ok: true, today, reminders, followups, nudges });
 }

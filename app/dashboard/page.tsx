@@ -2,8 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { spring } from '@/components/ux';
+
+interface KindWord {
+  comment: string;
+  photo_url: string | null;
+  created_at: string;
+  runner_name: string | null;
+}
 
 interface DashboardData {
   role: 'owner' | 'runner';
@@ -16,6 +24,15 @@ interface DashboardData {
   buddies: number;
   favorites: number;
   upcoming: number;
+  // owner-only
+  kindWords: KindWord[];
+  goal: number | null;
+  milesThisWeek: number;
+  goalHitThisWeek: boolean;
+  weeksHitGoal: number;
+  // runner-only
+  dogsHelped: number;
+  weeksActive: number;
 }
 
 function StatCard({ label, value, sub, delay = 0 }: { label: string; value: string | number; sub?: string; delay?: number }) {
@@ -66,6 +83,64 @@ export default function DashboardPage() {
               : 'Every run you have booked with a dog.'}
           </p>
         </div>
+
+        {/* Runner: a warm line, not a scoreboard */}
+        {!isOwner && data.dogsHelped > 0 && (
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="font-display text-[20px] text-soil leading-snug"
+          >
+            You&apos;ve helped {data.dogsHelped} {data.dogsHelped === 1 ? 'dog' : 'dogs'} get
+            their miles in{data.weeksActive > 1 ? `, across ${data.weeksActive} weeks` : ''}. 🎾
+          </motion.p>
+        )}
+
+        {/* Owner: this week's goal — a gentle win, not a bar to grind */}
+        {isOwner && data.goalHitThisWeek && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="bg-tennis/25 border border-tennis/50 rounded-xl p-4 text-center"
+          >
+            <p className="font-display text-[18px] text-soil">Weekly goal met this week 🎾</p>
+            {data.weeksHitGoal > 1 && (
+              <p className="text-[13px] text-soil/60 mt-0.5">{data.weeksHitGoal} weeks running — good stretch.</p>
+            )}
+          </motion.div>
+        )}
+
+        {/* Owner: kind words a runner left about the dog */}
+        {isOwner && data.kindWords.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...spring, delay: 0.05 }}
+          >
+            <h2 className="font-data text-[11px] tracking-[0.18em] text-clay mb-2">KIND WORDS ABOUT YOUR DOG</h2>
+            <div className="space-y-2.5">
+              {data.kindWords.map((kw) => (
+                <figure key={kw.created_at} className="bg-linen border border-soil/10 rounded-xl p-4">
+                  {kw.photo_url && (
+                    <Image
+                      src={kw.photo_url}
+                      alt="Run photo"
+                      width={400}
+                      height={260}
+                      className="rounded-lg w-full h-auto max-h-[220px] object-cover mb-3"
+                    />
+                  )}
+                  <blockquote className="text-[14px] text-soil/80 leading-relaxed">&ldquo;{kw.comment}&rdquo;</blockquote>
+                  <figcaption className="text-[12px] text-soil/50 mt-2 font-bold">
+                    — {kw.runner_name ?? 'A runner'}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         <div>
           <h2 className="font-data text-[11px] tracking-[0.18em] text-soil/45 mb-2">RUNS</h2>

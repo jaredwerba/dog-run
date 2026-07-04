@@ -206,9 +206,10 @@ function ForestHero() {
           transition={{ duration: 0.7, delay: 0.2 }}
           className="text-[16px] sm:text-[18px] leading-relaxed text-bark max-w-xl mx-auto mb-10"
         >
-          Go Dogs Boston matches runners with high-energy dogs and their owners.
-          Runners get a partner who never cancels. Dogs get sunshine, trails,
-          and the miles they were born for.
+          Go Dogs Boston matches your high-energy dog with a Boston runner who
+          actually wants the miles. Your dog comes home tired and happy — no more
+          guilt about the walk you didn&apos;t have time for. Runners get a partner
+          who never cancels.
         </motion.p>
 
         {/* trail-sign CTAs */}
@@ -787,9 +788,9 @@ export default function Home() {
                   <p className="font-data text-[12px] tracking-[0.24em] text-tennis mb-5">FOR DOG OWNERS</p>
                   <ul className="space-y-4 mb-8">
                     {[
-                      'High-energy breeds need real cardio — 60+ minutes a day, not a stroll',
-                      'Verified runners in your neighborhood, on your schedule',
-                      'You set pace caps, distance limits, and heat rules for your dog',
+                      'Come home to a calm, tired dog — not one bouncing off the walls at 6pm',
+                      'Give your dog the miles they need without rearranging your whole day',
+                      'Runners in your neighborhood, on your schedule — you set the pace, distance, and heat rules',
                     ].map((b) => (
                       <li key={b} className="flex gap-3 items-baseline text-[15px] text-white/85 leading-relaxed">
                         <span className="w-2 h-2 rounded-full bg-tennis shrink-0 translate-y-[-1px]" aria-hidden />

@@ -1,11 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
-import { db } from '@/lib/db';
+import { db, type SqlFn } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { getConvParticipants, type ConvParticipants } from '@/lib/participants';
-import { notifyRunConfirmed, notifyRunDeclined, notifyRunProposed } from '@/lib/email';
+import { notifyRunConfirmed, notifyRunDeclined, notifyRunProposed, notifyDogLoved, notifyRunnerReviewed, notifyGoalHit } from '@/lib/email';
 import { buildIcs, formatRunLabel } from '@/lib/ics';
-import { bostonToday } from '@/lib/dogMiles';
+import { bostonToday, bostonWeekStart } from '@/lib/dogMiles';
+
+/*
+ * Detect the moment a dog crosses its weekly mileage goal and celebrate it once
+ * per Boston week — for the owner AND every runner who logged miles this week.
+ * Returns whether the goal was (already or just) hit this week, so the logging
+ * runner can see the in-app celebration immediately.
+ */
+async function maybeCelebrateGoalHit(
+  sql: SqlFn,
+  args: {
+    ownerId: string;
+    conversationId: string;
+    runDate: string;
+    today: string;
+    dogName: string;
+    goal: number | null;
+    alreadyHitWeek: string | null;
+    oldMiles: number;
+    newMiles: number;
+  }
+): Promise<boolean> {
+  if (!args.goal) return false; // owner opted out of a weekly target
+  const weekStart = bostonWeekStart();
+  // Only a current-week run can complete the current week
+  if (args.runDate < weekStart || args.runDate > args.today) return false;
+  if (args.alreadyHitWeek === weekStart) return true; // already celebrated this week
+
+  const sumRows = await sql`
+    SELECT COALESCE(SUM(r.miles), 0)::float AS mi
+    FROM runs r
+    JOIN conversations c ON c.id = r.conversation_id
+    WHERE c.owner_id = ${args.ownerId} AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
+  `;
+  const afterSum = Number(sumRows[0].mi);
+  const beforeSum = afterSum - (args.newMiles - args.oldMiles);
+  const crossed = beforeSum < args.goal && afterSum >= args.goal;
+  if (!crossed) return false;
+
+  // Memoize so the celebration fires once per week across both miles-write paths
+  await sql`UPDATE dog_profiles SET goal_hit_week = ${weekStart} WHERE user_id = ${args.ownerId}`;
+
+  const goal = args.goal;
+  const dogName = args.dogName;
+  after(async () => {
+    const participants = await getConvParticipants(sql, args.conversationId);
+    if (!participants) return;
+    // One row per runner who helped this week (owner↔runner is one conversation)
+    const contributors = await sql`
+      SELECT c.id AS conversation_id, ru.username AS email, rp.runner_name
+      FROM runs r
+      JOIN conversations c ON c.id = r.conversation_id
+      JOIN users ru ON ru.id = c.runner_id
+      LEFT JOIN runner_profiles rp ON rp.user_id = c.runner_id
+      WHERE c.owner_id = ${args.ownerId} AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
+      GROUP BY c.id, ru.username, rp.runner_name
+    `;
+    await Promise.all([
+      notifyGoalHit({
+        to: participants.owner.email,
+        recipientName: participants.owner.name,
+        dogName,
+        goalMiles: goal,
+        side: 'owner',
+        conversationId: args.conversationId,
+      }),
+      ...contributors.map((c) =>
+        notifyGoalHit({
+          to: c.email as string,
+          recipientName: (c.runner_name as string) ?? 'there',
+          dogName,
+          goalMiles: goal,
+          side: 'runner',
+          conversationId: c.conversation_id as string,
+        })
+      ),
+    ]);
+  });
+  return true;
+}
 
 /* Same weekday/time/place, first occurrence strictly after today */
 function nextWeekDate(runDate: string, today: string): string {
@@ -110,6 +189,21 @@ export async function POST(
       milesActual = Math.round(m * 10) / 10;
     }
 
+    // First submission? (gate one-time "your dog was loved" notifications)
+    const priorFeedback = await sql`
+      SELECT 1 FROM run_feedback WHERE run_id = ${id} AND author_id = ${uid}
+    `;
+    const isFirstFeedback = priorFeedback.length === 0;
+
+    // Dog context — for the goal celebration and the owner-facing dog name
+    const dogRows = await sql`
+      SELECT dog_name, weekly_goal_miles, goal_hit_week
+      FROM dog_profiles WHERE user_id = ${run.owner_id}
+    `;
+    const dogName = (dogRows[0]?.dog_name as string) ?? 'their dog';
+    const weeklyGoal = (dogRows[0]?.weekly_goal_miles as number | null) ?? null;
+    const goalHitWeek = dogRows[0]?.goal_hit_week ? String(dogRows[0].goal_hit_week).slice(0, 10) : null;
+
     await sql`
       INSERT INTO run_feedback (run_id, author_id, role, comment, wants_rebook, miles_actual, share_as_review, photo_url)
       VALUES (${id}, ${uid}, ${role}, ${comment}, ${wantsRebook}, ${milesActual}, ${shareAsReview}, ${photoUrl})
@@ -123,18 +217,49 @@ export async function POST(
     `;
 
     // Runner's actual miles keep the ledger honest
+    let goalHit = false;
     if (milesActual !== null) {
       await sql`UPDATE runs SET miles = ${milesActual}, reported_at = now() WHERE id = ${id}`;
+      goalHit = await maybeCelebrateGoalHit(sql, {
+        ownerId: run.owner_id as string,
+        conversationId,
+        runDate,
+        today,
+        dogName,
+        goal: weeklyGoal,
+        alreadyHitWeek: goalHitWeek,
+        oldMiles: Number(run.miles) || 0,
+        newMiles: milesActual,
+      });
     }
 
     // Owner reviews the runner; runner reviews the dog. Comments only, no scores.
     if (shareAsReview && role === 'owner') {
+      const priorReview = await sql`
+        SELECT 1 FROM runner_reviews WHERE runner_id = ${run.runner_id} AND author_id = ${uid}
+      `;
       await sql`
         INSERT INTO runner_reviews (runner_id, author_id, comment, photo_url)
         VALUES (${run.runner_id}, ${uid}, ${comment}, ${photoUrl})
         ON CONFLICT (runner_id, author_id) DO UPDATE SET
           comment = EXCLUDED.comment, photo_url = EXCLUDED.photo_url, created_at = now()
       `;
+      // Tell the runner they were praised — but only the first time (not on edits)
+      if (priorReview.length === 0) {
+        after(async () => {
+          const participants = await getConvParticipants(sql, conversationId);
+          if (!participants) return;
+          await notifyRunnerReviewed({
+            to: participants.runner.email,
+            runnerId: run.runner_id as string,
+            runnerName: participants.runner.name,
+            ownerName: participants.owner.name,
+            dogName: participants.owner.dogName ?? dogName,
+            comment,
+            photoUrl,
+          });
+        });
+      }
     } else if (shareAsReview && role === 'runner') {
       await sql`
         INSERT INTO dog_reviews (dog_owner_id, author_id, comment, photo_url)
@@ -142,6 +267,24 @@ export async function POST(
         ON CONFLICT (dog_owner_id, author_id) DO UPDATE SET
           comment = EXCLUDED.comment, photo_url = EXCLUDED.photo_url, created_at = now()
       `;
+    }
+
+    // A runner's words/photo about the dog — deliver that payoff to the owner.
+    // Fires on any first feedback with content, whether or not it's shared publicly.
+    if (role === 'runner' && isFirstFeedback && (comment.length > 0 || photoUrl)) {
+      after(async () => {
+        const participants = await getConvParticipants(sql, conversationId);
+        if (!participants) return;
+        await notifyDogLoved({
+          to: participants.owner.email,
+          ownerName: participants.owner.name,
+          runnerName: participants.runner.name,
+          dogName: participants.owner.dogName ?? dogName,
+          comment,
+          photoUrl,
+          conversationId,
+        });
+      });
     }
 
     const chatNote = `🏁 ${comment ? `"${comment}"` : 'Logged the run'}${milesActual !== null ? ` — ${milesActual} mi` : ''}${wantsRebook ? ' · up for the same time next week 🔁' : ''}`;
@@ -209,7 +352,13 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ ok: true, wantsRebook, rebooked });
+    return NextResponse.json({
+      ok: true,
+      wantsRebook,
+      rebooked,
+      goalHit,
+      helped: role === 'runner' ? { dogName } : null,
+    });
   }
 
   // ── Post-run report: log actual miles + a note, fills the mileage ledger ──
@@ -234,7 +383,24 @@ export async function POST(
       INSERT INTO messages (conversation_id, sender_id, content)
       VALUES (${conversationId}, ${uid}, ${chatNote})
     `;
-    return NextResponse.json({ run: updated });
+
+    // Same weekly-goal celebration as the feedback path (this is the legacy log route)
+    const dogRows = await sql`
+      SELECT dog_name, weekly_goal_miles, goal_hit_week
+      FROM dog_profiles WHERE user_id = ${run.owner_id}
+    `;
+    const goalHit = await maybeCelebrateGoalHit(sql, {
+      ownerId: run.owner_id as string,
+      conversationId,
+      runDate,
+      today,
+      dogName: (dogRows[0]?.dog_name as string) ?? 'their dog',
+      goal: (dogRows[0]?.weekly_goal_miles as number | null) ?? null,
+      alreadyHitWeek: dogRows[0]?.goal_hit_week ? String(dogRows[0].goal_hit_week).slice(0, 10) : null,
+      oldMiles: Number(run.miles) || 0,
+      newMiles: reportMiles,
+    });
+    return NextResponse.json({ run: updated, goalHit });
   }
 
   if (action === 'cancel') {

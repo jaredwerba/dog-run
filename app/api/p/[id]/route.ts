@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { bostonWeekStart } from '@/lib/dogMiles';
+import { bostonToday, bostonWeekStart } from '@/lib/dogMiles';
 
 // GET /api/p/[id] — public, no-auth profile view for shareable links.
 // Strictly public-safe fields: no email/contact/schedule.
@@ -56,6 +56,15 @@ export async function GET(
       LIMIT 20
     `;
 
-    return NextResponse.json({ type: 'runner', profile: rows[0], reviews });
+    const today = bostonToday();
+    const dogsRunWith = (
+      await sql`
+        SELECT COUNT(DISTINCT c.owner_id)::int AS n
+        FROM runs r JOIN conversations c ON c.id = r.conversation_id
+        WHERE c.runner_id = ${id} AND r.status = 'confirmed' AND r.run_date <= ${today}
+      `
+    )[0].n as number;
+
+    return NextResponse.json({ type: 'runner', profile: rows[0], reviews, dogsRunWith });
   }
 }

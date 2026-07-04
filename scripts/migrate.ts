@@ -178,6 +178,10 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS favorites_user_id_idx ON favorites(user_id)`;
 
+  // Weekly-goal celebration + nudge memos (per dog, per Boston week)
+  await sql`ALTER TABLE dog_profiles ADD COLUMN IF NOT EXISTS goal_hit_week DATE`;
+  await sql`ALTER TABLE dog_profiles ADD COLUMN IF NOT EXISTS nudge_sent_week DATE`;
+
   console.log('Migrations complete.');
 }
 

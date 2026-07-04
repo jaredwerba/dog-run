@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { bostonToday, bostonWeekStart } from '@/lib/dogMiles';
+import { bostonToday, bostonWeekStart, weeksAtGoal } from '@/lib/dogMiles';
 
 /* First of the current month / year, Boston time, as YYYY-MM-DD */
 function bostonMonthStart(): string {
@@ -58,6 +58,60 @@ export async function GET() {
 
   const favorites = await sql`SELECT COUNT(*)::int AS n FROM favorites WHERE user_id = ${uid}`;
 
+  // ── Owner extras: kind words about the dog + weekly-goal state/streak ──
+  let kindWords: { comment: string; photo_url: string | null; created_at: string; runner_name: string | null }[] = [];
+  let goal: number | null = null;
+  let milesThisWeek = 0;
+  let weeksHitGoal = 0;
+  if (isOwner) {
+    const words = await sql`
+      SELECT dr.comment, dr.photo_url, dr.created_at, rp.runner_name
+      FROM dog_reviews dr
+      LEFT JOIN runner_profiles rp ON rp.user_id = dr.author_id
+      WHERE dr.dog_owner_id = ${uid}
+      ORDER BY dr.created_at DESC
+      LIMIT 3
+    `;
+    kindWords = words as typeof kindWords;
+
+    const dog = await sql`SELECT weekly_goal_miles FROM dog_profiles WHERE user_id = ${uid}`;
+    goal = (dog[0]?.weekly_goal_miles as number | null) ?? null;
+    const wk = await sql`
+      SELECT COALESCE(SUM(r.miles), 0)::float AS mi
+      FROM runs r JOIN conversations c ON c.id = r.conversation_id
+      WHERE c.owner_id = ${uid} AND r.status = 'confirmed' AND r.run_date >= ${weekStart}
+    `;
+    milesThisWeek = Number(wk[0].mi);
+    if (goal) {
+      const perWeek = await sql`
+        SELECT date_trunc('week', r.run_date)::date::text AS week_start, COALESCE(SUM(r.miles), 0)::float AS mi
+        FROM runs r JOIN conversations c ON c.id = r.conversation_id
+        WHERE c.owner_id = ${uid} AND r.status = 'confirmed' AND r.run_date <= ${today}
+        GROUP BY 1
+      `;
+      weeksHitGoal = weeksAtGoal(
+        perWeek.map((w) => ({ weekStart: w.week_start as string, miles: Number(w.mi) })),
+        goal,
+        weekStart
+      );
+    }
+  }
+
+  // ── Runner extras: dogs helped + weeks active (gentle, warm, no ranking) ──
+  let dogsHelped = 0;
+  let weeksActive = 0;
+  if (!isOwner) {
+    const r = await sql`
+      SELECT
+        COUNT(DISTINCT c.owner_id)::int AS dogs_helped,
+        COUNT(DISTINCT to_char(r.run_date, 'IYYY-IW'))::int AS weeks_active
+      FROM runs r JOIN conversations c ON c.id = r.conversation_id
+      WHERE c.runner_id = ${uid} AND r.status = 'confirmed' AND r.run_date <= ${today}
+    `;
+    dogsHelped = r[0].dogs_helped as number;
+    weeksActive = r[0].weeks_active as number;
+  }
+
   // Upcoming count for a quick glance
   const upcoming = await sql`
     SELECT COUNT(*)::int AS n
@@ -79,5 +133,14 @@ export async function GET() {
     buddies: t.buddies,
     favorites: favorites[0].n,
     upcoming: upcoming[0].n,
+    // owner-only
+    kindWords,
+    goal,
+    milesThisWeek,
+    goalHitThisWeek: goal !== null && milesThisWeek >= goal,
+    weeksHitGoal,
+    // runner-only
+    dogsHelped,
+    weeksActive,
   });
 }

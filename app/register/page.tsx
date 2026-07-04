@@ -132,7 +132,7 @@ export default function RegisterPage() {
             >
               <div className="text-3xl mb-1">🐶</div>
               <div className="font-bold text-soil text-[17px]">Dog Owner</div>
-              <div className="text-sm text-soil/55">Find a runner to join my dog&apos;s run</div>
+              <div className="text-sm text-soil/55">Find a runner to tire out your dog — and hand back your evenings</div>
             </motion.button>
             <motion.button
               {...press}

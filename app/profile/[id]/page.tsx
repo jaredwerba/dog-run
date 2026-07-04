@@ -80,6 +80,7 @@ export default function ProfilePage() {
   const [msgText, setMsgText] = useState('');
   const [msgEdited, setMsgEdited] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [dogsRunWith, setDogsRunWith] = useState(0);
   const [mySchedule, setMySchedule] = useState<Schedule | null>(null);
   const [canReview, setCanReview] = useState(false);
   const [reviewDraft, setReviewDraft] = useState('');
@@ -124,6 +125,7 @@ export default function ProfilePage() {
         setProfile(d.profile);
         setType(d.type);
         setReviews(d.reviews ?? []);
+        setDogsRunWith(d.dogsRunWith ?? 0);
         setCanReview(Boolean(d.canReview));
         setReviewDraft(d.myReview ?? '');
         setMySchedule(d.mySchedule ?? null);
@@ -330,6 +332,22 @@ export default function ProfilePage() {
             )}
           </motion.div>
         ) : null}
+
+        {/* Runner credibility — a soft signal, not a score */}
+        {type === 'runner' && dogsRunWith > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="bg-linen rounded-xl border border-soil/10 px-4 py-3"
+          >
+            <p className="font-data text-[10px] tracking-[0.15em] text-clay mb-0.5">TRACK RECORD</p>
+            <p className="text-[14px] text-soil/80">
+              Has run with{' '}
+              <span className="font-bold text-soil">{dogsRunWith} Boston {dogsRunWith === 1 ? 'dog' : 'dogs'}</span>.
+            </p>
+          </motion.div>
+        )}
 
         {/* Details */}
         <div className="bg-linen rounded-xl border border-soil/10 divide-y divide-soil/10">

@@ -118,6 +118,7 @@ function RunPlanner({
   const [shareReview, setShareReview] = useState(true);
   const [reportPhotoUrl, setReportPhotoUrl] = useState('');
   const [uploadingReportPhoto, setUploadingReportPhoto] = useState(false);
+  const [celebration, setCelebration] = useState<{ headline: string; sub: string } | null>(null);
 
   const active = runs.find(
     (r) =>
@@ -192,7 +193,7 @@ function RunPlanner({
     setBusy(true);
     // Rebook happens server-side: proposal normally, auto-booked when both
     // sides toggled "run again" for the same run.
-    await fetch(`/api/runs/${lastCompleted.id}`, {
+    const res = await fetch(`/api/runs/${lastCompleted.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -204,6 +205,23 @@ function RunPlanner({
         photoUrl: reportPhotoUrl || undefined,
       }),
     });
+    const result = await res.json().catch(() => ({}));
+
+    // A warm beat for the runner who just logged a run (once per run).
+    if (!isOwner && result?.helped?.dogName) {
+      const runId = lastCompleted.id;
+      const goalKey = `gdb-goal-${runId}`;
+      const helpedKey = `gdb-helped-${runId}`;
+      if (result.goalHit && !localStorage.getItem(goalKey)) {
+        localStorage.setItem(goalKey, '1');
+        localStorage.setItem(helpedKey, '1');
+        setCelebration({ headline: `${result.helped.dogName} hit the goal 🎾`, sub: 'You both did that' });
+      } else if (!localStorage.getItem(helpedKey)) {
+        localStorage.setItem(helpedKey, '1');
+        setCelebration({ headline: `You helped ${result.helped.dogName} toward the week`, sub: "🎾 That's what this is all about" });
+      }
+    }
+
     setReportNote('');
     setReportMiles('');
     setReportPhotoUrl('');
@@ -213,6 +231,12 @@ function RunPlanner({
 
   return (
     <div className="px-4 pt-3">
+      <MatchCelebration
+        show={celebration !== null}
+        headline={celebration?.headline}
+        sub={celebration?.sub}
+        onDone={() => setCelebration(null)}
+      />
       <AnimatePresence mode="wait" initial={false}>
         {active?.status === 'confirmed' ? (
           <motion.div

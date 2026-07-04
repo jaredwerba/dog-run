@@ -7,6 +7,8 @@ export interface Participant {
   name: string;
   /* e.g. "Dan (Tank's owner)" for owners, plain name for runners */
   label: string;
+  /* Bare dog name, owner only (runners leave it undefined) */
+  dogName?: string;
 }
 
 export interface ConvParticipants {
@@ -44,6 +46,7 @@ export async function getConvParticipants(
     email: r.owner_email as string,
     name: ownerName,
     label: `${ownerName} (${dogName}'s owner)`,
+    dogName,
   };
   const runner: Participant = {
     userId: r.runner_id as string,

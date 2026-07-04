@@ -28,6 +28,7 @@ interface PublicProfile {
     dog_name?: string | null;
     runner_name?: string | null;
   }[];
+  dogsRunWith?: number;
 }
 
 const PACE_LABEL: Record<string, string> = {
@@ -115,6 +116,17 @@ export default function PublicProfilePage() {
               <div>
                 <p className="font-data text-[10px] uppercase tracking-[0.1em] text-soil/45">Good to know</p>
                 <p className="text-sm text-soil font-medium">{profile.quirks}</p>
+              </div>
+            </div>
+          )}
+          {type === 'runner' && (data.dogsRunWith ?? 0) > 0 && (
+            <div className="flex items-start gap-3 px-4 py-3">
+              <span className="text-xl">🐾</span>
+              <div>
+                <p className="font-data text-[10px] uppercase tracking-[0.1em] text-soil/45">Track record</p>
+                <p className="text-sm text-soil font-medium">
+                  Has run with {data.dogsRunWith} Boston {data.dogsRunWith === 1 ? 'dog' : 'dogs'}
+                </p>
               </div>
             </div>
           )}
